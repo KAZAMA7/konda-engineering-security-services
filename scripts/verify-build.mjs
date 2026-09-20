@@ -3,7 +3,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { parseHTML } from 'linkedom';
 import { site } from '../src/lib/config.mjs';
-import { createCsp, createSecurityHeaders, renderNginxHeaders, renderTheme } from '../src/lib/security.mjs';
+import { createCloudFrontPolicy, createCsp, createSecurityHeaders, renderTheme } from '../src/lib/security.mjs';
 
 const root = new URL('../dist/', import.meta.url);
 const documents = new Map();
@@ -11,7 +11,8 @@ const files = [];
 for (const name of await readdir(root, { recursive: true })) {
   if (!(await stat(new URL(name, root))).isFile()) continue;
   files.push(name);
-  assert.ok(name === '_headers' || ['.html', '.css', '.svg', '.txt', '.xml'].includes(extname(name)), `Unexpected runtime or source artifact: ${name}`);
+  assert.ok(['.html', '.css', '.svg', '.txt', '.xml'].includes(extname(name)), `Unexpected runtime or source artifact: ${name}`);
+  assert.ok(!name.split('/').some((part) => part.startsWith('.') || part.startsWith('_')) || name.startsWith('_astro/'), `Only hashed _astro assets may use a reserved prefix: ${name}`);
   if (name.endsWith('.html')) documents.set(`/${name}`, parseHTML(await readFile(new URL(name, root), 'utf8')).document);
 }
 
@@ -96,11 +97,12 @@ const sitemap = await readFile(new URL('sitemap.xml', root), 'utf8');
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 assert.deepEqual(sitemapUrls.sort(), routes.filter((route) => route !== site.routes.notFound).map((route) => new URL(route, site.site.url).href).sort());
 
-const hostHeaders = await readFile(new URL('_headers', root), 'utf8');
-for (const [name, value] of Object.entries(createSecurityHeaders(site))) assert.ok(hostHeaders.includes(`  ${name}: ${value}\n`), `Missing header ${name}`);
-const policy = JSON.parse(await readFile(new URL('../.deploy/response-headers-policy.json', import.meta.url), 'utf8'));
+const deployDir = new URL('../.deploy/', import.meta.url);
+const policy = JSON.parse(await readFile(new URL('response-headers-policy.json', deployDir), 'utf8'));
+assert.deepEqual(policy, createCloudFrontPolicy(site));
 assert.equal(policy.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy, createCsp(site));
-assert.equal(await readFile(new URL('../.deploy/nginx-security-headers.conf', import.meta.url), 'utf8'), renderNginxHeaders(site));
+assert.equal((await readFile(new URL('csp.txt', deployDir), 'utf8')).trim(), createCsp(site));
+assert.deepEqual(JSON.parse(await readFile(new URL('security-headers.json', deployDir), 'utf8')), createSecurityHeaders(site));
 assert.equal(await readFile(new URL('theme.css', root), 'utf8'), renderTheme(site));
 for (const name of files.filter((file) => file.endsWith('.css'))) {
   const css = await readFile(new URL(name, root), 'utf8');

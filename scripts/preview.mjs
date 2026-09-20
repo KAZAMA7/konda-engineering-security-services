@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { cacheControl } from './verify-deployment.mjs';
 
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
 
@@ -10,8 +11,8 @@ export async function startPreview({ directory = fileURLToPath(new URL('../dist/
   const securityHeaders = headers ?? JSON.parse(await readFile(new URL('../.deploy/security-headers.json', import.meta.url), 'utf8'));
   await readFile(resolve(root, 'index.html'));
   const server = createServer(async (request, response) => {
-    const respond = (status, body, type = 'text/plain; charset=utf-8') => {
-      response.writeHead(status, { ...securityHeaders, 'Content-Type': type, 'Cache-Control': 'no-store' });
+    const respond = (status, body, type = 'text/plain; charset=utf-8', cache = cacheControl.revalidate) => {
+      response.writeHead(status, { ...securityHeaders, 'Content-Type': type, 'Cache-Control': cache });
       response.end(request.method === 'HEAD' ? undefined : body);
     };
     if (!['GET', 'HEAD'].includes(request.method ?? '')) {
@@ -23,8 +24,8 @@ export async function startPreview({ directory = fileURLToPath(new URL('../dist/
       const pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://127.0.0.1').pathname);
       const path = resolve(root, `.${pathname === '/' ? '/index.html' : pathname}`);
       if (!path.startsWith(`${root}${sep}`) || pathname.split('/').some((part) => part.startsWith('.')) || !types[extname(path)]) throw new Error('Not found');
-      const body = await readFile(path);
-      respond(pathname === '/404.html' ? 404 : 200, body, types[extname(path)]);
+      // Like S3 behind CloudFront: existing objects (including /404.html itself) are 200, hashed assets are immutable, pages revalidate.
+      respond(200, await readFile(path), types[extname(path)], pathname.startsWith('/_astro/') ? cacheControl.immutable : cacheControl.revalidate);
     } catch {
       try {
         respond(404, await readFile(resolve(root, '404.html')), types['.html']);

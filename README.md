@@ -2,7 +2,9 @@
 
 A config-driven **Astro + Tailwind CSS** website for executive B2B audiences. The production artifact contains static HTML, external CSS, a self-hosted SVG favicon, and crawl metadata. **No SSR, hydration, browser JavaScript, cookies, analytics, databases, edge functions, or production Node runtime.** Native links, a responsive HTML disclosure menu, and optional native form submission work with JavaScript disabled.
 
-The default organization is **Konda Engineering and security services**, offering **Security Architecture, Pentesting, DevSecOps, GRC, and Platform Engineering**, each with a dedicated page. The regional focus is **the Netherlands and the UAE**, with public phone **+31 626798365**, [WhatsApp contact](https://wa.me/31626798365), and address **Charles Dickensstraat 35, Rijkerswoerd, Arnhem 6836 TR**. The planned canonical domain is **https://konda.com**; configuring it here does not register the domain or change DNS. Branding and content remain editable in `site.config.json`. The leadership credentials and address come from the supplied brief; no customer logos, testimonials, or performance claims have been invented.
+The default organization is **Konda Engineering and security services**, offering **Security Architecture, Pentesting, DevSecOps, GRC, and Platform Engineering**, each with a dedicated page. The regional focus is **the Netherlands and the UAE**, with public phone **+31 626798365**, [WhatsApp contact](https://wa.me/31626798365), and address **Charles Dickensstraat 35, Rijkerswoerd, Arnhem 6836 TR**. The canonical domain is **https://konda.com**; configuring it here does not register the domain or change DNS. Branding and content remain editable in `site.config.json`. The leadership credentials and address come from the supplied brief; no customer logos, testimonials, or performance claims have been invented.
+
+**This branch (`S3-hosting`) hosts the site as static files in a private Amazon S3 bucket served by Amazon CloudFront over HTTPS at `konda.com`.** There is no container, web server, or application runtime to operate; the `main` branch keeps the container-based variant. Every push to `S3-hosting` builds, tests, and — after approval in the protected `production` environment — publishes the site with `.github/workflows/deploy.yml`. The [deployment runbook below](#deploy-to-aws-s3-and-cloudfront) takes you from an empty AWS account to a verified release on your domain.
 
 ## Start locally
 
@@ -15,26 +17,14 @@ npm run dev
 
 Development: `http://127.0.0.1:4321`. After editing `site.config.json`, restart the development command so generated theme/security files refresh as well as content.
 
-To inspect the **actual production build with its HTTP security headers**:
+To inspect the **actual production build with the same HTTP headers and caching the CloudFront release uses**:
 
 ```sh
 npm run build
 npm run preview
 ```
 
-`scripts/preview.mjs` is a loopback-only development/test utility, not a deployed server. Object-storage deployments publish only `dist/`; the container packages those same static files with Nginx. Development mode intentionally does not enforce the production CSP because Astro's development client needs scripts; use the production preview to evaluate security behavior.
-
-## Run in a container
-
-Only Docker and Compose are needed; the build runs inside the container:
-
-```sh
-docker compose up --build
-```
-
-Open `http://127.0.0.1:8080`. Stop with Ctrl+C and `docker compose down`. The multi-stage image runs non-root Nginx, preserves the generated security headers, supports `PORT` (default `8080`) and `/healthz`, and works with a read-only root filesystem. There is no Node runtime in the final image.
-
-The [container deployment runbook below](#deploy-containers-to-aws-azure-or-gcp) covers **AWS ECS/Fargate, Azure Container Apps, and GCP Cloud Run**, including first-time provisioning, GitHub OIDC, `konda.com` DNS/HTTPS, deployments, and rollback. Container hosting uses compute; the original zero-application-compute static-hosting options remain supported.
+`scripts/preview.mjs` is a loopback-only development/test utility, not a deployed server. It mirrors S3 behind CloudFront: every file in `dist/` is served as-is, hashed `_astro/` assets are immutable, pages revalidate, unknown paths return `404.html` with a real `404` status, and every response carries the generated security headers. Development mode intentionally does not enforce the production CSP because Astro's development client needs scripts; use the production preview to evaluate security behavior.
 
 ## Repository tree
 
@@ -42,50 +32,35 @@ The complete authored source tree and generated release locations:
 
 ```text
 .
-├── .dockerignore
 ├── .github/
 │   ├── dependabot.yml
 │   └── workflows/
-│       ├── container.yml
-│       ├── deploy-container.yml
-│       └── deploy.yml
+│       └── deploy.yml                  # Build, test, publish to S3, update CloudFront headers, verify
 ├── .gitignore
 ├── .nvmrc
-├── Dockerfile
 ├── astro.config.mjs
-├── compose.yaml
-├── netlify.toml
 ├── package.json
 ├── package-lock.json
 ├── playwright.config.ts
 ├── README.md
-├── site.config.json
+├── site.config.json                    # All content, routes, contact details and theme
 ├── tsconfig.json
 ├── docs/
-│   ├── aws-deployment.md
-│   └── container-deployment.md
+│   └── aws-deployment.md               # Architecture, IAM, caching, drift, rollback and cleanup reference
 ├── infra/
-│   ├── aws/
-│   │   ├── container.yaml
-│   │   └── site.yaml
-│   ├── container/
-│   │   ├── entrypoint.sh
-│   │   └── nginx.conf.template
-│   └── gcp/
-│       └── http-redirect.yaml
-├── public/                         # Generated by npm run generate; ignored
-│   ├── _headers
+│   └── aws/
+│       └── site.yaml                   # CloudFormation: S3 + CloudFront + ACM certificate + Route 53 records
+├── public/                             # Generated by npm run generate; ignored
 │   ├── favicon.svg
 │   ├── robots.txt
 │   ├── sitemap.xml
 │   └── theme.css
 ├── scripts/
-│   ├── deploy-container.mjs
-│   ├── generate.mjs
-│   ├── preview.mjs
-│   ├── validate-production.mjs
-│   ├── verify-build.mjs
-│   └── verify-deployment.mjs
+│   ├── generate.mjs                    # Config → theme.css, CloudFront header policy, CSP, crawl metadata
+│   ├── preview.mjs                     # Loopback preview with the release headers and caching
+│   ├── validate-production.mjs         # Refuses placeholder domains/contacts before a release
+│   ├── verify-build.mjs                # Audits dist/ after every build
+│   └── verify-deployment.mjs           # Compares a live origin with dist/ (used by CI and by hand)
 ├── src/
 │   ├── components/
 │   │   ├── About.astro
@@ -101,8 +76,8 @@ The complete authored source tree and generated release locations:
 │   ├── layouts/
 │   │   └── MainLayout.astro
 │   ├── lib/
-│   │   ├── config.mjs
-│   │   └── security.mjs
+│   │   ├── config.mjs                  # Zod schema and parser for site.config.json
+│   │   └── security.mjs                # CSP, security headers and CloudFront policy generator
 │   ├── pages/
 │   │   ├── index.astro
 │   │   └── [page].astro
@@ -111,26 +86,24 @@ The complete authored source tree and generated release locations:
 ├── tests/
 │   ├── astro.config.mjs
 │   ├── config.test.mjs
-│   ├── container.test.mjs
-│   ├── deploy-container.test.mjs
 │   ├── form-config.mjs
+│   ├── release.test.mjs                # Workflow/template/docs release-contract guards
 │   ├── security.test.mjs
 │   ├── serve-form.mjs
+│   ├── verify-deployment.test.mjs      # Verifier against a loopback S3/CloudFront stand-in
 │   ├── e2e/
 │   │   ├── contact.spec.ts
 │   │   └── site.spec.ts
 │   └── fixtures/
 │       └── pages/
 │           └── index.astro
-├── .deploy/                        # Generated; not public
-│   ├── csp.txt
-│   ├── nginx-security-headers.conf
-│   ├── response-headers-policy.json
-│   └── security-headers.json
-└── dist/                           # Generated static files; also bundled in the container
+├── .deploy/                            # Generated; not public
+│   ├── csp.txt                         # CloudFormation ContentSecurityPolicy parameter value
+│   ├── response-headers-policy.json    # CloudFront ResponseHeadersPolicyConfig applied by the workflow
+│   └── security-headers.json           # Header name/value map used by the preview and the verifier
+└── dist/                               # Generated static files; every file is uploaded to S3
     ├── _astro/
     │   └── <content-hash>.css
-    ├── _headers
     ├── 404.html
     ├── devsecops.html
     ├── favicon.svg
@@ -162,24 +135,24 @@ Dependency/cache/report directories (`node_modules/`, `.astro/`, `.test-build/`,
 | `contact` | Public email/phone, postal address, WhatsApp link, and optional external form settings |
 | `privacy`, `notFound` | Complete secondary-page content |
 
-The parser (`src/lib/config.mjs`) uses a strict Zod schema at build time. Unknown keys, duplicate IDs or page routes, broken internal navigation, unsafe theme values, malformed URLs, and non-HTTPS or same-origin form handlers fail the build. Components render escaped text, never raw configured HTML. There is no browser-side fetch of configuration, and the JSON source is not copied into `dist/`.
+The parser (`src/lib/config.mjs`) uses a strict Zod schema at build time. Unknown keys, duplicate IDs or page routes, broken internal navigation, unsafe theme values, malformed URLs, and non-HTTPS or same-origin form handlers fail the build. Components render escaped text, never raw configured HTML. There is no browser-side fetch of configuration, and the JSON source is not copied into `dist/` (the release verifier confirms `/site.config.json` answers `404` on the live site).
 
 **Contact details:** `contact.address` sets the public postal address. `contact.whatsappUrl` uses `https://wa.me/` followed by an international phone number with digits only (no `+`, spaces, or punctuation); the default is `https://wa.me/31626798365`. Set either field to an empty string to hide it. Labels live in `ui`. WhatsApp is an ordinary external link: it loads only when selected, requires no browser JavaScript, and does not change CSP.
 
 **Extend services:** append an object with a unique `id`, a unique flat `.html` `href`, `icon`, `title`, `description`, `tags`, `scope` (objects with `title` and `description`), and `outcomes` (text entries) to `services.items`. `Services.astro` renders and links each homepage card; `[page].astro` and `Capability.astro` generate its full static page, including contact details and links to other capabilities. The sitemap updates automatically. Shared page labels live in `services.page`. Available icon keys: `terminal`, `layers`, `compass`, `target`, `search`, `arrow`, `shield`, `check`. Section IDs and navigation targets can also be changed together in the config.
 
-**Theme:** `scripts/generate.mjs` writes validated CSS custom properties into external `theme.css`; Tailwind consumes those properties. Color or font changes never require inline style attributes or relaxing CSP. Fonts are system fallbacks; no font CDN is contacted. Re-run accessibility checks when changing contrast or typography. `src/styles/global.css` registers `src/**/*.astro` as Tailwind's only class source (`source(none)` plus `@source`), so documentation, scripts, and generated files never change the stylesheet: a host build and the container build of the same commit are byte-identical, which the deployment verifier relies on.
+**Theme:** `scripts/generate.mjs` writes validated CSS custom properties into external `theme.css`; Tailwind consumes those properties. Color or font changes never require inline style attributes or relaxing CSP. Fonts are system fallbacks; no font CDN is contacted. Re-run accessibility checks when changing contrast or typography. `src/styles/global.css` registers `src/**/*.astro` as Tailwind's only class source (`source(none)` plus `@source`), so documentation, scripts, and generated files never change the stylesheet, and a build of the same commit is byte-identical on any machine — the deployment verifier relies on this.
 
-**Routing:** Astro emits `index.html`, the configured privacy page, `404.html`, and one page per capability. The default capability routes are `/devsecops.html`, `/security-architecture.html`, `/grc.html`, `/pentesting.html`, and `/platform-engineering.html`. Links use flat `.html` paths so a private S3 REST origin needs no rewrite function. Adding an entirely new page *type* requires a template; adding services, copy, navigation entries, or changing existing page filenames does not.
+**Routing:** Astro emits `index.html`, the configured privacy page, `404.html`, and one page per capability. The default capability routes are `/devsecops.html`, `/security-architecture.html`, `/grc.html`, `/pentesting.html`, and `/platform-engineering.html`. Links use flat `.html` paths so the private S3 origin needs no rewrite function: `/privacy.html` is an object key, `/privacy` and `/privacy/` are not aliases and return the `404` page. Adding an entirely new page *type* requires a template; adding services, copy, navigation entries, or changing existing page filenames does not.
 
 ## Before publishing
 
 1. Confirm the brand and leadership copy in `site.config.json`.
-2. Acquire/control `konda.com` and its DNS, then configure HTTPS using your chosen cloud section below. `site.url` is already `https://konda.com`; change it if you ultimately choose another domain.
+2. Control `konda.com` and its DNS. `site.url` is already `https://konda.com`; change it if you ultimately choose another domain, and pass the same hostname as the stack's `DomainName` parameter.
 3. Verify the published address, phone, and WhatsApp account. A working phone or WhatsApp channel is sufficient; alternatively configure `contact.email` or `contact.form.endpoint` with `contact.form.providerName`. Never put a secret, API key, or unpublished private address in public configuration.
-4. Review the privacy notice against the actual hosting, enquiry provider, retention practices, and applicable Netherlands/EU and UAE requirements; it is a starting notice, not legal advice.
-5. Set `site.indexable` to `true` when ready for search indexing. It is intentionally `false` in the starter.
-6. Run `npm run validate:production` and all checks below, then configure the chosen host.
+4. Review the privacy notice against the actual hosting (AWS S3/CloudFront, the region you choose, CloudFront's edge locations), enquiry provider, retention practices, and applicable Netherlands/EU and UAE requirements; it is a starting notice, not legal advice.
+5. Set `site.indexable` to `true` when ready for search indexing. It is intentionally `false` in the starter, which publishes a `robots.txt` that disallows crawling.
+6. Run `npm run validate:production` and all checks below, then follow the deployment runbook.
 
 The default configuration includes the supplied address, phone, and WhatsApp link but deliberately has **no fake email and no live enquiry endpoint**. Production validation requires a non-placeholder canonical domain and at least one contact channel; an address alone is not a messaging channel. Domain ownership, telephone reachability, and WhatsApp/provider availability cannot be proven by a syntax validator; verify them before release. Search indexing remains disabled until you deliberately enable it.
 
@@ -189,129 +162,135 @@ To use Formspree, create and verify a form in your own account, then set its rea
 
 The form posts `name`, `email`, `company`, `message`, `_gotcha` (honeypot), and `_subject` as `application/x-www-form-urlencoded`. It needs no JavaScript, CORS fetch permission, or local API. The provider handles success/error pages; there is no fabricated client-side success message. Choose a provider whose response or redirect stays on the configured form origin, otherwise strict `form-action` may reject it.
 
-**Provider responsibilities:** server-side input validation and length limits, rate limiting, abuse/spam controls, appropriate data retention/access control, transport security, and an accessible confirmation/error flow. Browser validation and the honeypot are usability/defense-in-depth features, not security boundaries. Any challenge page must run at the provider; embedding CAPTCHA scripts here would violate the intentionally script-free policy. API Gateway/Lambda, if selected, belongs to a separate external enquiry service and is not provisioned or deployed with this website.
+**Provider responsibilities:** server-side input validation and length limits, rate limiting, abuse/spam controls, appropriate data retention/access control, transport security, and an accessible confirmation/error flow. Browser validation and the honeypot are usability/defense-in-depth features, not security boundaries. Any challenge page must run at the provider; embedding CAPTCHA scripts here would violate the intentionally script-free policy. API Gateway/Lambda, if selected, belongs to a separate external enquiry service and is not provisioned or deployed with this website. CloudFront accepts only `GET`/`HEAD` for this site, so the form must post directly to the provider.
 
-Changing the form endpoint changes generated CSP. Rebuild and redeploy both assets and headers. The permitted `form-action` is the **specific provider origin**, not all HTTPS destinations. It is origin-level to permit same-provider confirmation redirects; this intentionally trusts that provider's other paths. Test an actual enquiry in the deployed environment before launch.
+Changing the form endpoint changes the generated CSP. The next release rebuilds the pages **and** updates the CloudFront response headers policy together. The permitted `form-action` is the **specific provider origin**, not all HTTPS destinations. It is origin-level to permit same-provider confirmation redirects; this intentionally trusts that provider's other paths. Test an actual enquiry on the deployed domain before launch.
 
 ## Security headers and boundaries
 
-Every build produces the same policy for Netlify/Cloudflare (`dist/_headers`), CloudFront (`.deploy/response-headers-policy.json`), Nginx (`.deploy/nginx-security-headers.conf`), and local production preview. The default CSP is:
+Every build produces one security policy in three generated forms: `.deploy/response-headers-policy.json` (the CloudFront `ResponseHeadersPolicyConfig` the workflow applies), `.deploy/csp.txt` (the CloudFormation `ContentSecurityPolicy` parameter), and `.deploy/security-headers.json` (the header map used by the local preview and the release verifier). The default CSP is:
 
 ```text
 default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; manifest-src 'none'; upgrade-insecure-requests;
 ```
 
-Enabling a form replaces only `form-action 'none'` with its approved HTTPS origin. There is no `unsafe-inline`, `unsafe-eval`, wildcard, or CDN exception. Other headers include HSTS, `nosniff`, frame denial, no-referrer, restricted device permissions, and same-origin resource/opener policies. HSTS intentionally does **not** include subdomains or preload: do not commit unrelated domains to HTTPS without an audit.
+Enabling a form replaces only `form-action 'none'` with its approved HTTPS origin. There is no `unsafe-inline`, `unsafe-eval`, wildcard, or CDN exception. Other headers include HSTS, `nosniff`, frame denial, no-referrer, restricted device permissions, and same-origin resource/opener policies. HSTS intentionally does **not** include subdomains or preload: do not commit unrelated `konda.com` subdomains to HTTPS without an audit.
 
-The HTML contains an additional CSP meta fallback. **Meta is not a substitute for HTTP headers:** `frame-ancestors` and HSTS require response headers. S3 object metadata cannot implement this security policy; CloudFront's attached response-headers policy is essential. The development server's headers are not production evidence.
+The HTML contains an additional CSP meta fallback. **Meta is not a substitute for HTTP headers:** `frame-ancestors` and HSTS require response headers. S3 object metadata cannot implement this security policy; the CloudFront response headers policy attached by `infra/aws/site.yaml` and refreshed by every release is essential. The release verifier fails a deployment whose successful **or** `404` responses lack any generated header. The development server's headers are not production evidence.
 
-Static delivery removes application-server attack surfaces, not every security risk. DNS, cloud IAM, the build/dependency supply chain, GitHub access, configuration edits, and the external form provider still need protection and maintenance. Review dependency-update pull requests; pin/review release changes; protect the production environment; never weaken CSP to accommodate an unexpected build artifact.
+Hosting boundaries in this branch: the bucket blocks all public access, disables ACLs, encrypts at rest, keeps object versions, and refuses non-TLS requests; only the one CloudFront distribution may read it, through signed Origin Access Control requests. CloudFront redirects HTTP to HTTPS (TLS 1.2+ for `konda.com`), serves `/` as `index.html`, converts S3's `403`/`404` into the real `404` page, compresses responses, and never forwards cookies, query strings, or viewer headers. GitHub deploys with a short-lived OIDC role that can only upload objects, read/update this site's header policy, and invalidate this distribution — it cannot delete objects or versions, read the site, change the bucket policy, alter the distribution, or touch IAM/CloudFormation.
 
-## Deployment
+Static delivery removes application-server attack surfaces, not every security risk. DNS, cloud IAM, the build/dependency supply chain, GitHub access, configuration edits, and the external form provider still need protection and maintenance. Review dependency-update pull requests; pin/review release changes; protect the `production` environment; never weaken CSP to accommodate an unexpected build artifact.
 
-### Portable containers: Azure, GCP, or AWS
+## Deploy to AWS S3 and CloudFront
 
-Follow the [complete container runbook below](#deploy-containers-to-aws-azure-or-gcp). `.github/workflows/deploy-container.yml` is the manually triggered deployment workflow; `.github/workflows/container.yml` remains credential-free container CI. All public releases build with `--build-arg VALIDATE_PRODUCTION=true`, target port `8080`, and health path `/healthz`.
+```text
+ browser ──HTTPS konda.com──▶ CloudFront distribution ──signed (OAC)──▶ private S3 bucket
+                              • ACM certificate, HTTP→HTTPS            • encrypted, versioned
+                              • response headers policy (CSP, HSTS…)   • all public access blocked
+                              • 403/404 → /404.html                    • TLS-only bucket policy
 
-### AWS S3 + CloudFront OAC
+ git push S3-hosting ──▶ GitHub Actions build job (no AWS access) ──▶ approved deploy job (OIDC role)
+                         npm ci · check · test · validate:production    sync _astro/ (immutable) · copy pages
+                         build · e2e · release-contract checks          update header policy · invalidate · verify
+```
 
-Use [the AWS deployment runbook](docs/aws-deployment.md) and `infra/aws/site.yaml`. It provisions a dedicated private, encrypted, versioned bucket, signed Origin Access Control, CloudFront, and response security headers. `.github/workflows/deploy.yml` builds/tests without AWS permissions, then uses short-lived GitHub OIDC credentials in a protected production job to publish files and update security headers. No long-lived AWS keys are needed.
+These are **operator-run, one-time bootstrap instructions** that create billable resources. Building or testing this repository creates nothing in AWS, and no live deployment was performed while authoring this branch. Replace every `REPLACE_...` value. If a resource already exists, reuse it rather than recreating it. `docs/aws-deployment.md` explains the design decisions, the exact permissions, caching, drift, rollback, and cleanup in more depth.
 
-This separate static deployment is **off by default**. Only set the repository variable `ENABLE_AWS_STATIC_DEPLOY=true` if you want S3/CloudFront releases. It then expects GitHub `production` environment variables `AWS_REGION`, `AWS_ROLE_ARN`, `S3_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`, and `CLOUDFRONT_RESPONSE_HEADERS_POLICY_ID`. The runbook covers bootstrap, exact permissions/trust, custom DNS, caching, and rollback. Leave that flag unset for container-only deployments. No AWS resources are created merely by building this repository.
+- [1. Prerequisites](#1-prerequisites)
+- [2. Create the bucket, distribution and certificate](#2-create-the-bucket-distribution-and-certificate)
+- [3. Create the GitHub deployment role](#3-create-the-github-deployment-role)
+- [4. Configure the GitHub production environment](#4-configure-the-github-production-environment)
+- [5. Release by pushing to S3-hosting](#5-release-by-pushing-to-s3-hosting)
+- [6. Point konda.com at CloudFront and verify](#6-point-kondacom-at-cloudfront-and-verify)
+- [7. Update, roll back and operate](#7-update-roll-back-and-operate)
 
-### Cloudflare Pages
+### 1. Prerequisites
 
-- Connect the repository as a **Pages static project**, not a Worker or SSR app.
-- Use Node 24, build command `npm run validate:production && npm run build`, output directory `dist`.
-- Pages serves the generated `_headers` automatically. Do not add Pages Functions or `_worker.js`.
-- For previews while the starter is unconfigured, use `npm run build`; do not bypass production validation for public release.
-- Pages may redirect `.html` addresses to its clean-URL equivalents; both resolve to the same static file. Verify navigation and canonical URLs on the selected host. AWS requires the explicit `.html` links provided here.
-
-### Netlify
-
-Connect the repository; `netlify.toml` selects Node 24, builds to `dist`, applies production configuration validation, and disables HTML pretty-URL processing. Generated `_headers` applies the security headers. Deploy previews may build the unconfigured starter; production cannot. No Netlify Functions, form-detection attributes, or framework server adapter are used.
-
-For every provider, verify HTTPS, the CSP/other response headers on **both successful and 404 responses**, private AWS-origin access where applicable, the rendered contact details, and a real end-to-end enquiry after deployment.
-
-## Deploy containers to AWS, Azure, or GCP
-
-Choose **one** provider for the public `konda.com` DNS target. Each path uses the same image; only infrastructure and identity configuration differ. These are operator-run instructions that create **billable resources**. No cloud resources, domain registration, DNS changes, or live deployments are performed by cloning/building this repository.
-
-- [Shared prerequisites](#shared-prerequisites)
-- [AWS: Fargate, ECR, and Route 53](#aws-fargate-ecr-and-route-53)
-- [Azure: Container Apps and ACR](#azure-container-apps-and-acr)
-- [GCP: Cloud Run and Artifact Registry](#gcp-cloud-run-and-artifact-registry)
-- [Start a GitHub deployment](#start-a-github-deployment)
-- [Verify, roll back, and operate](#verify-roll-back-and-operate)
-
-### Shared prerequisites
-
-1. Own/control `konda.com`, its authoritative DNS, and your selected cloud account/project/subscription. This repository makes no claim that the domain is available or registered. Preserve existing mail/TXT records when changing DNS; do not publish conflicting apex records for different clouds.
-2. Install Git, Docker Desktop/Engine with Buildx, Node 24/npm, `jq`, GitHub CLI `gh`, and the selected provider's current CLI (`aws` v2, `az` with `containerapp`, or `gcloud`). Authenticate interactively through your normal SSO **before** running bootstrap commands. The operator needs provisioning/IAM privileges; the later GitHub identity receives only release permissions.
-3. Run commands from this repository root in a Bash-compatible shell. Replace every `REPLACE_...` value before running a block. Resource-creation commands are **one-time bootstrap**, not commands to rerun on every release. If resources already exist, inspect/reuse them instead of deleting/recreating them.
-4. Review the production checklist above and run `npm ci`, `npm run validate:production`, `npm run check`, `npm test`, and `npm run build`. All public images must use `--build-arg VALIDATE_PRODUCTION=true` and `--platform linux/amd64` (also on Apple Silicon). `--provenance=false` keeps each push a single-platform image like the workflow's tested release. Use unique tags/digests, never `latest`.
-5. In GitHub **Settings → Environments**, create only the environment(s) you will use: `container-aws`, `container-azure`, or `container-gcp`. Restrict deployment branches to **main only**, require an independent reviewer, and prevent self-review/bypass where your plan supports it. Protect `main` and review workflow changes. Environment-scoped OIDC subjects do not themselves restrict a branch; these controls are essential. Do not enable production deployment until your account/plan supports the controls you require.
+1. Control `konda.com` at its registrar. Decide where its authoritative DNS lives: a **public Route 53 hosted zone** (recommended; the stack then issues the certificate and creates the `konda.com` records itself) or **another DNS provider** (you create one validation record and one alias record by hand). Preserve existing mail/TXT records when changing nameservers.
+2. An AWS account and the **AWS CLI v2** authenticated (for example through SSO) as an operator identity allowed to run CloudFormation, ACM, Route 53, S3, CloudFront, and IAM. Only this identity performs the bootstrap; GitHub later receives a much narrower role. Install `jq` and the GitHub CLI `gh` (optional; the GitHub web UI works too).
+3. Node 24 and npm, and a clone of this repository on the `S3-hosting` branch. Run every block below from the repository root in a Bash-compatible shell, in one terminal session so the variables carry over.
+4. Use **`us-east-1`** for the stack. CloudFront only accepts certificates from ACM in `us-east-1`, so the certificate-issuing stack must run there; the bucket simply lives in the same region and is fetched by CloudFront's edge locations worldwide.
 
 ```sh
+git checkout S3-hosting
 REPO=KAZAMA7/konda-engineering-security-services
 DOMAIN=konda.com
-RELEASE="bootstrap-$(git rev-parse --short=12 HEAD)-$(date -u +%Y%m%d%H%M%S)"
-mkdir -p .deploy
+STACK=konda-site
+export AWS_REGION=us-east-1 AWS_PAGER='' AWS_CLI_AUTO_PROMPT=off
+aws sts get-caller-identity --query Account --output text   # confirms which account you are about to change
+
+npm ci
+npm run validate:production
+npm run check
+npm test
+npm run build
 ```
 
-The container listens on `0.0.0.0:8080`, runs as `101:101`, and exposes `/healthz`. Terminate TLS at managed ingress, redirect HTTP to HTTPS, and configure HTTP health probes. Do not require TLS inside Nginx, mount application source over the image, or inject cloud keys. Only `/tmp` needs runtime writes. All copy/theme/domain/security settings are **build-time**, so changing `site.config.json` requires a new image, not an environment-variable update. Nginx retains the same CSP/security headers on successful and missing-page responses.
+The build writes `.deploy/csp.txt`; the stack takes it as its `ContentSecurityPolicy` parameter so CloudFront applies the correct policy from the first request.
 
-### AWS: Fargate, ECR, and Route 53
+### 2. Create the bucket, distribution and certificate
 
-This path uses the included `infra/aws/container.yaml`: a dedicated VPC, two public subnets, an IPv4 ALB, regional ACM certificate, Route 53 apex alias, ECS cluster/service, and CloudWatch logs. It uses **standard Fargate**, so custom-domain infrastructure is explicitly managed. Start with one `0.25 vCPU / 512 MiB` task; ALB, public IPv4, logging, registry, and task charges continue independently of traffic. There is no autoscaling policy in this starter stack.
-
-**1. Prepare DNS and publish the bootstrap image.** Create or reuse a **public Route 53 hosted zone for `konda.com`** and delegate the registrar to its nameservers. Record its zone ID (without `/hostedzone/`). Copy existing DNS records before changing nameservers. The stack needs an unoccupied apex `A` record and a delegated zone for ACM DNS validation; otherwise creation can stall. Choose a commercial AWS region with at least two available AZs.
+**Option A — DNS in Route 53 (recommended).** Create or reuse a public hosted zone for `konda.com` and make sure the registrar delegates to its four nameservers. Then pass its ID; the stack requests a DNS-validated ACM certificate, writes the validation record, creates the `konda.com` A and AAAA alias records to the distribution, and attaches the certificate to CloudFront.
 
 ```sh
-AWS_REGION=eu-west-1
-AWS_ECR_REPOSITORY=konda-services
-HOSTED_ZONE_ID=REPLACE_WITH_PUBLIC_ZONE_ID
-STACK=konda-container
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-REGISTRY="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-
-aws ecr create-repository --region "$AWS_REGION" \
-  --repository-name "$AWS_ECR_REPOSITORY" --image-tag-mutability IMMUTABLE \
-  --image-scanning-configuration scanOnPush=true
-aws ecr get-login-password --region "$AWS_REGION" | \
-  docker login --username AWS --password-stdin "$REGISTRY"
-IMAGE="$REGISTRY/$AWS_ECR_REPOSITORY:$RELEASE"
-docker buildx build --platform linux/amd64 --provenance=false \
-  --build-arg VALIDATE_PRODUCTION=true --tag "$IMAGE" --push .
+aws route53 list-hosted-zones-by-name --dns-name "$DOMAIN" \
+  --query 'HostedZones[].[Id,Name,Config.PrivateZone]' --output table
+HOSTED_ZONE_ID=REPLACE_WITH_PUBLIC_ZONE_ID   # the value after /hostedzone/, e.g. Z0123456789ABCDEFGHIJ
 
 aws cloudformation deploy --region "$AWS_REGION" --stack-name "$STACK" \
-  --template-file infra/aws/container.yaml --capabilities CAPABILITY_IAM \
-  --parameter-overrides DomainName="$DOMAIN" HostedZoneId="$HOSTED_ZONE_ID" \
-    ContainerImage="$IMAGE" DesiredCount=1 \
+  --template-file infra/aws/site.yaml \
+  --parameter-overrides "ContentSecurityPolicy=$(< .deploy/csp.txt)" \
+    "DomainName=$DOMAIN" "HostedZoneId=$HOSTED_ZONE_ID" \
   --tags Project=konda-services --no-fail-on-empty-changeset
-aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name "$STACK" \
-  --query 'Stacks[0].Outputs' --output table
 ```
 
-The stack creates the ACM validation record and `konda.com` **A Alias** automatically, issues the certificate in the **same region as the ALB**, and redirects port 80 to 443. Wait for stack completion and `https://konda.com/healthz` before proceeding. It is IPv4-only: do not add an `AAAA` record pointing elsewhere. Task public IPs allow outbound ECR/S3/log access without a NAT gateway; their security group admits port `8080` **only from the ALB**, not the Internet. The task has no application IAM role. Its root filesystem remains writable for `/tmp`, but non-root Nginx cannot modify root-owned site files. Logs are retained on stack deletion and expire after 14 days.
+Creation takes roughly 10–20 minutes: ACM waits for the validation record to resolve, and CloudFront deploys globally. If the zone is not yet delegated, the certificate never validates and the stack eventually rolls back — fix delegation first. The zone must not already contain a conflicting apex `A`/`AAAA` record.
 
-**2. Create a narrowly scoped GitHub OIDC role.** Bootstrap uses your operator identity; GitHub must not receive CloudFormation, DNS, or IAM administration permissions. Reuse the account's existing GitHub OIDC provider if present. If absent, an IAM administrator can create it once:
+**Option B — DNS elsewhere.** Request the certificate in `us-east-1` yourself, publish the validation CNAME at your provider, wait for issuance, then create the stack with the certificate ARN. You point DNS at CloudFront in step 6.
 
 ```sh
+CERTIFICATE_ARN=$(aws acm request-certificate --region us-east-1 --domain-name "$DOMAIN" \
+  --validation-method DNS --query CertificateArn --output text)
+aws acm describe-certificate --region us-east-1 --certificate-arn "$CERTIFICATE_ARN" \
+  --query 'Certificate.DomainValidationOptions[0].ResourceRecord' --output table
+# Create that CNAME (Name → Value) at your DNS provider, then wait until it is issued:
+aws acm wait certificate-validated --region us-east-1 --certificate-arn "$CERTIFICATE_ARN"
+
+aws cloudformation deploy --region "$AWS_REGION" --stack-name "$STACK" \
+  --template-file infra/aws/site.yaml \
+  --parameter-overrides "ContentSecurityPolicy=$(< .deploy/csp.txt)" \
+    "DomainName=$DOMAIN" "AcmCertificateArn=$CERTIFICATE_ARN" \
+  --tags Project=konda-services --no-fail-on-empty-changeset
+```
+
+**Either way**, read the outputs and keep them in your shell; they become the GitHub variables:
+
+```sh
+output() { aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name "$STACK" \
+  --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue | [0]" --output text; }
+aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name "$STACK" --query 'Stacks[0].Outputs' --output table
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+S3_BUCKET=$(output S3BucketName)
+CLOUDFRONT_DISTRIBUTION_ID=$(output CloudFrontDistributionId)
+CLOUDFRONT_RESPONSE_HEADERS_POLICY_ID=$(output CloudFrontResponseHeadersPolicyId)
+CLOUDFRONT_DOMAIN=$(output CloudFrontDomainName)
+```
+
+The bucket is empty at this point, so `https://$CLOUDFRONT_DOMAIN/` answers `404` until the first release. To run without a custom domain for now, pass `DomainName=` (empty) and neither `HostedZoneId` nor `AcmCertificateArn`; the `*.cloudfront.net` hostname then serves the site over HTTPS with CloudFront's own certificate, and you can add the domain later with a stack update.
+
+### 3. Create the GitHub deployment role
+
+GitHub authenticates with a short-lived OIDC token; no AWS access keys are stored anywhere. The role trusts **only** this repository's `production` environment and may only upload objects to this bucket, update this one response headers policy, and invalidate this one distribution.
+
+```sh
+# One provider per AWS account: skip creation if the list already contains token.actions.githubusercontent.com.
+aws iam list-open-id-connect-providers --query 'OpenIDConnectProviderList[].Arn' --output text
 aws iam create-open-id-connect-provider \
   --url https://token.actions.githubusercontent.com --client-id-list sts.amazonaws.com
-```
-
-Read the stack outputs and create the role/policy:
-
-```sh
-AWS_ECS_CLUSTER=$(aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='EcsCluster'].OutputValue | [0]" --output text)
-AWS_ECS_SERVICE=$(aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='EcsService'].OutputValue | [0]" --output text)
-SERVICE_ARN=$(aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='ServiceArn'].OutputValue | [0]" --output text)
-EXECUTION_ROLE_ARN=$(aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='TaskExecutionRoleArn'].OutputValue | [0]" --output text)
 OIDC_PROVIDER_ARN="arn:aws:iam::$ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
 
-jq -n --arg provider "$OIDC_PROVIDER_ARN" --arg subject "repo:$REPO:environment:container-aws" '{
+jq -n --arg provider "$OIDC_PROVIDER_ARN" --arg subject "repo:$REPO:environment:production" '{
   Version: "2012-10-17", Statement: [{
     Effect: "Allow", Principal: {Federated: $provider}, Action: "sts:AssumeRoleWithWebIdentity",
     Condition: {StringEquals: {
@@ -319,353 +298,119 @@ jq -n --arg provider "$OIDC_PROVIDER_ARN" --arg subject "repo:$REPO:environment:
       "token.actions.githubusercontent.com:sub": $subject
     }}
   }]
-}' > .deploy/container-aws-trust.json
-aws iam create-role --role-name konda-container-github \
-  --assume-role-policy-document file://.deploy/container-aws-trust.json
+}' > .deploy/github-trust.json
+aws iam create-role --role-name konda-site-github-deploy --max-session-duration 3600 \
+  --assume-role-policy-document file://.deploy/github-trust.json \
+  --tags Key=Project,Value=konda-services
 
-jq -n --arg repo "arn:aws:ecr:$AWS_REGION:$ACCOUNT_ID:repository/$AWS_ECR_REPOSITORY" \
-  --arg service "$SERVICE_ARN" --arg execution "$EXECUTION_ROLE_ARN" '{
+jq -n --arg bucket "arn:aws:s3:::$S3_BUCKET" \
+  --arg distribution "arn:aws:cloudfront::$ACCOUNT_ID:distribution/$CLOUDFRONT_DISTRIBUTION_ID" \
+  --arg policy "arn:aws:cloudfront::$ACCOUNT_ID:response-headers-policy/$CLOUDFRONT_RESPONSE_HEADERS_POLICY_ID" '{
   Version: "2012-10-17", Statement: [
-    {Effect: "Allow", Action: "ecr:GetAuthorizationToken", Resource: "*"},
-    {Effect: "Allow", Action: ["ecr:BatchCheckLayerAvailability", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:PutImage", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:DescribeImages"], Resource: $repo},
-    {Effect: "Allow", Action: ["ecs:DescribeServices", "ecs:UpdateService"], Resource: $service},
-    {Effect: "Allow", Action: ["ecs:RegisterTaskDefinition", "ecs:DescribeTaskDefinition"], Resource: "*"},
-    {Effect: "Allow", Action: "iam:PassRole", Resource: $execution,
-      Condition: {StringEquals: {"iam:PassedToService": "ecs-tasks.amazonaws.com"}}}
+    {Sid: "ListDedicatedBucket", Effect: "Allow", Action: ["s3:ListBucket", "s3:GetBucketLocation"], Resource: $bucket},
+    {Sid: "UploadSiteObjects", Effect: "Allow", Action: ["s3:PutObject", "s3:AbortMultipartUpload"], Resource: ($bucket + "/*")},
+    {Sid: "VerifyAndInvalidateDistribution", Effect: "Allow",
+      Action: ["cloudfront:GetDistribution", "cloudfront:CreateInvalidation", "cloudfront:GetInvalidation"], Resource: $distribution},
+    {Sid: "UpdateResponseHeadersPolicy", Effect: "Allow",
+      Action: ["cloudfront:GetResponseHeadersPolicy", "cloudfront:UpdateResponseHeadersPolicy"], Resource: $policy}
   ]
-}' > .deploy/container-aws-permissions.json
-aws iam put-role-policy --role-name konda-container-github --policy-name deploy-one-site \
-  --policy-document file://.deploy/container-aws-permissions.json
-AWS_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/konda-container-github"
+}' > .deploy/github-permissions.json
+aws iam put-role-policy --role-name konda-site-github-deploy --policy-name konda-site-release \
+  --policy-document file://.deploy/github-permissions.json
+AWS_ROLE_ARN=$(aws iam get-role --role-name konda-site-github-deploy --query Role.Arn --output text)
 ```
 
-The wildcard task-definition API permissions allow registration/introspection, not deployment to arbitrary services: `UpdateService` is restricted to the one service and `PassRole` to its execution role. Do not attach administrator policies or add a wildcard OIDC subject. IAM changes can take time to propagate.
+The subject `repo:OWNER/REPO:environment:production` does not contain a branch name, so the environment's branch rule in the next step is what limits releases to `S3-hosting`. Never widen the subject to `repo:OWNER/REPO:*`.
 
-**3. Populate GitHub environment variables** after creating/protecting `container-aws`:
+### 4. Configure the GitHub production environment
+
+In the repository go to **Settings → Environments → New environment** and name it `production`. Under **Deployment branches and tags** choose *Selected branches and tags* and add `S3-hosting` only. Add yourself (or a colleague) as a **required reviewer** and, where your plan allows, prevent self-review and administrator bypass. Also protect the `S3-hosting` branch itself so workflow, template, and configuration changes are reviewed before they can deploy.
+
+Then add the five environment variables (these are identifiers, not secrets):
+
+| Variable | Value |
+| --- | --- |
+| `AWS_REGION` | `us-east-1` (the `AWSRegion` output) |
+| `AWS_ROLE_ARN` | the role ARN from step 3 |
+| `S3_BUCKET` | `S3BucketName` output |
+| `CLOUDFRONT_DISTRIBUTION_ID` | `CloudFrontDistributionId` output |
+| `CLOUDFRONT_RESPONSE_HEADERS_POLICY_ID` | `CloudFrontResponseHeadersPolicyId` output |
+
+With the GitHub CLI (after creating the environment in the UI):
 
 ```sh
-gh variable set AWS_REGION --repo "$REPO" --env container-aws --body "$AWS_REGION"
-gh variable set AWS_ROLE_ARN --repo "$REPO" --env container-aws --body "$AWS_ROLE_ARN"
-gh variable set AWS_ECR_REPOSITORY --repo "$REPO" --env container-aws --body "$AWS_ECR_REPOSITORY"
-gh variable set AWS_ECS_CLUSTER --repo "$REPO" --env container-aws --body "$AWS_ECS_CLUSTER"
-gh variable set AWS_ECS_SERVICE --repo "$REPO" --env container-aws --body "$AWS_ECS_SERVICE"
-gh variable set CONTAINER_PUBLIC_URL --repo "$REPO" --env container-aws --body "https://$DOMAIN"
+for name in AWS_REGION AWS_ROLE_ARN S3_BUCKET CLOUDFRONT_DISTRIBUTION_ID CLOUDFRONT_RESPONSE_HEADERS_POLICY_ID; do
+  gh variable set "$name" --repo "$REPO" --env production --body "${!name}"
+done
+gh variable list --repo "$REPO" --env production
 ```
 
-The deployment targets the existing ECS container named `site`, updates its task-definition image by digest, waits for service stability, and checks that a circuit-breaker rollback did not silently restore the old task definition. For later CloudFormation changes, pass the **currently deployed image** as `ContainerImage`; otherwise an infrastructure update can reapply an old application revision. Do not run stack changes concurrently with a release. Existing platforms can use the workflow if they meet this task/service contract and have equivalent IAM/network/TLS configuration.
+A sixth, optional variable `PUBLIC_URL` (`https://konda.com`) is added in step 6 once DNS resolves to the distribution. Leave it unset until then; a release fails if it is set while the domain still points elsewhere.
 
-### Azure: Container Apps and ACR
+### 5. Release by pushing to S3-hosting
 
-**1. Provision the registry, managed pull identity, environment, and app.** The operator needs resource-creation, role-assignment, and ACR push permissions. Use a globally unique lowercase alphanumeric ACR name. This recipe uses registry-level RBAC (`AcrPull`/`AcrPush`); an existing ABAC-enabled registry requires the equivalent repository-reader/writer roles instead. Do not enable ACR admin credentials.
+Every push to `S3-hosting` (and every manual **Run workflow** on that branch) runs `.github/workflows/deploy.yml`. Pull requests and other branches only build and test.
 
 ```sh
-AZURE_SUBSCRIPTION_ID=REPLACE_WITH_SUBSCRIPTION_ID
-AZURE_RESOURCE_GROUP=konda-site
-AZURE_LOCATION=westeurope
-AZURE_ACR_NAME=REPLACE_WITH_UNIQUE_LOWERCASE_ACR_NAME
-AZURE_CONTAINER_APP=konda-site
-AZURE_ENVIRONMENT=konda-environment
-
-az account set --subscription "$AZURE_SUBSCRIPTION_ID"
-az extension add --name containerapp --upgrade --yes
-az provider register --namespace Microsoft.App --wait
-az provider register --namespace Microsoft.OperationalInsights --wait
-az group create --name "$AZURE_RESOURCE_GROUP" --location "$AZURE_LOCATION"
-az acr create --name "$AZURE_ACR_NAME" --resource-group "$AZURE_RESOURCE_GROUP" \
-  --sku Basic --admin-enabled false
-az acr config authentication-as-arm update --registry "$AZURE_ACR_NAME" --status enabled
-REGISTRY=$(az acr show --name "$AZURE_ACR_NAME" --query loginServer --output tsv)
-REGISTRY_ID=$(az acr show --name "$AZURE_ACR_NAME" --query id --output tsv)
-az acr login --name "$AZURE_ACR_NAME"
-IMAGE="$REGISTRY/konda-services:$RELEASE"
-docker buildx build --platform linux/amd64 --provenance=false \
-  --build-arg VALIDATE_PRODUCTION=true --tag "$IMAGE" --push .
-
-az identity create --name konda-image-pull --resource-group "$AZURE_RESOURCE_GROUP"
-PULL_ID=$(az identity show --name konda-image-pull --resource-group "$AZURE_RESOURCE_GROUP" --query id --output tsv)
-PULL_PRINCIPAL=$(az identity show --name konda-image-pull --resource-group "$AZURE_RESOURCE_GROUP" --query principalId --output tsv)
-az role assignment create --assignee-object-id "$PULL_PRINCIPAL" \
-  --assignee-principal-type ServicePrincipal --role AcrPull --scope "$REGISTRY_ID"
-
-az containerapp env create --name "$AZURE_ENVIRONMENT" \
-  --resource-group "$AZURE_RESOURCE_GROUP" --location "$AZURE_LOCATION"
-az containerapp create --name "$AZURE_CONTAINER_APP" --resource-group "$AZURE_RESOURCE_GROUP" \
-  --environment "$AZURE_ENVIRONMENT" --image "$IMAGE" --revisions-mode single \
-  --registry-server "$REGISTRY" --registry-identity "$PULL_ID" --user-assigned "$PULL_ID" \
-  --ingress external --target-port 8080 --transport auto --env-vars PORT=8080 \
-  --cpu 0.25 --memory 0.5Gi --min-replicas 0 --max-replicas 3
-APP_ID=$(az containerapp show --name "$AZURE_CONTAINER_APP" --resource-group "$AZURE_RESOURCE_GROUP" --query id --output tsv)
-ENVIRONMENT_ID=$(az containerapp env show --name "$AZURE_ENVIRONMENT" --resource-group "$AZURE_RESOURCE_GROUP" --query id --output tsv)
-AZURE_FQDN=$(az containerapp show --name "$AZURE_CONTAINER_APP" --resource-group "$AZURE_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn --output tsv)
-curl --fail --silent --show-error "https://$AZURE_FQDN/healthz"
+git push origin S3-hosting
+gh run list --repo "$REPO" --workflow deploy.yml --limit 3
+gh run watch --repo "$REPO"
 ```
 
-Allow identity assignments to propagate before app creation. In the Azure portal, open the app's **Containers → Edit and deploy → Health probes** and configure these HTTP probes (the image's Docker `HEALTHCHECK` is not a substitute). Save/deploy the revision and wait until healthy:
+The **build** job has no AWS access: it installs with `npm ci`, type-checks, runs the unit and release-contract tests, refuses placeholder configuration, builds, runs the desktop/mobile browser tests, checks the generated CloudFront policy, and uploads `dist/`, `.deploy/`, and the verifier as one artifact. The **deploy** job waits for your approval in the `production` environment, then:
 
-| Probe | Path / port | Interval / timeout | Failure threshold |
-| --- | --- | --- | --- |
-| Startup | `/healthz` / `8080` | 5s / 2s | 24 |
-| Readiness | `/healthz` / `8080` | 10s / 2s | 3 |
-| Liveness | `/healthz` / `8080` | 30s / 2s | 3 |
+1. assumes the OIDC role and checks that the configured bucket is the distribution's private origin and that the configured header policy is attached (and, once set, that `PUBLIC_URL` is one of the distribution's aliases);
+2. syncs `dist/_astro/` with `Cache-Control: public, max-age=31536000, immutable` **without deleting** earlier hashes, so cached pages keep loading their stylesheet;
+3. copies every other file with `Cache-Control: no-cache, max-age=0, must-revalidate` and MIME types detected from the extension;
+4. merges this build's `response-headers-policy.json` into the existing policy using its `ETag` (a concurrent manual edit fails the release instead of being overwritten);
+5. waits for the distribution, invalidates `/*`, and waits for completion;
+6. runs `scripts/verify-deployment.mjs` against `https://<distribution>.cloudfront.net`: every file in `dist/` byte-for-byte, `/index.html`, correct `Content-Type` and `Cache-Control`, all security headers on successes **and** errors, real `404`s for unknown paths, `/site.config.json`, and `/.deploy/…`, and a permanent HTTP→HTTPS redirect. When `PUBLIC_URL` is set, it repeats the check on your domain and requires it to equal the canonical URL built into the pages.
 
-Keep ingress **Allow insecure connections disabled** and revision mode **Single**. The workflow intentionally requires one container and Single mode so a successful release does not leave traffic on an older revision. Managed identities are for image pulls/deployment; do not give the runtime application additional Azure roles.
+Approve the run in the Actions tab when prompted. The first release makes `https://$CLOUDFRONT_DOMAIN/` serve the site; open it and check the homepage, a capability page, and a missing page.
 
-**2. Bind `konda.com` with a free managed certificate.** Obtain the real environment IP and domain-verification value:
+### 6. Point konda.com at CloudFront and verify
+
+**Option A (Route 53):** the stack already created the `konda.com` `A` and `AAAA` alias records to the distribution; nothing to do.
+
+**Option B (external DNS):** create an apex alias to the distribution hostname. At the zone apex a plain CNAME is not allowed by DNS; use your provider's ALIAS/ANAME/CNAME-flattening feature to point `konda.com` at `$CLOUDFRONT_DOMAIN`. If your provider cannot alias the apex, move the zone to Route 53 and switch to Option A (`HostedZoneId` on a stack update). Keep the ACM validation CNAME in place so the certificate renews automatically.
+
+Then check DNS and HTTPS — never use `curl -k`:
 
 ```sh
-az containerapp env show --name "$AZURE_ENVIRONMENT" --resource-group "$AZURE_RESOURCE_GROUP" \
-  --query properties.staticIp --output tsv
-az containerapp show --name "$AZURE_CONTAINER_APP" --resource-group "$AZURE_RESOURCE_GROUP" \
-  --query properties.customDomainVerificationId --output tsv
+dig +short "$DOMAIN" A
+dig +short "$DOMAIN" AAAA
+curl --silent --show-error --head "http://$DOMAIN/"       # 301 → https://konda.com/
+curl --silent --show-error --head "https://$DOMAIN/"      # 200 with content-security-policy, strict-transport-security…
+curl --silent --show-error --head "https://$DOMAIN/this-page-does-not-exist.html"   # 404 with the same headers
+npm run build && npm run verify:deployment -- --url "https://$DOMAIN" --expect-canonical
 ```
 
-At your authoritative DNS provider, set `A @` to the returned environment IP and `TXT asuid` to the returned verification value. Do **not** use a root CNAME or invent an IP. If using a proxying DNS provider, keep these records DNS-only during certificate setup and satisfy Azure's renewal requirements. If CAA records exist, allow DigiCert (`0 issue digicert.com`). Once DNS has propagated:
+`verify:deployment` is the exact check the workflow runs. Once it passes, record the domain in GitHub so every future release proves the public site as well:
 
 ```sh
-az containerapp hostname add --hostname "$DOMAIN" \
-  --name "$AZURE_CONTAINER_APP" --resource-group "$AZURE_RESOURCE_GROUP"
-az containerapp hostname bind --hostname "$DOMAIN" \
-  --name "$AZURE_CONTAINER_APP" --resource-group "$AZURE_RESOURCE_GROUP" \
-  --environment "$AZURE_ENVIRONMENT" --validation-method HTTP
-curl --fail --silent --show-error "https://$DOMAIN/healthz"
+gh variable set PUBLIC_URL --repo "$REPO" --env production --body "https://$DOMAIN"
 ```
 
-Leave the verification/DNS records in place for renewal and keep the app accessible to the certificate authority's validation service. The managed certificate is for `konda.com`, not automatically for `www.konda.com`.
+Browse the homepage and all five capability pages, test the phone, WhatsApp, and (if configured) form links, and switch `site.indexable` to `true` in a reviewed change when you want search engines to index the site. `www.konda.com` is deliberately **not** served: to add it, extend the certificate (`SubjectAlternativeNames`) and the distribution's `Aliases` in `infra/aws/site.yaml`, add matching records, and prefer a redirect to the canonical apex rather than serving the site under two hostnames.
 
-**3. Create a separate GitHub deployment identity and federation.** It has registry push access, app-scoped update access, environment read access, and permission to assign only the existing image-pull identity; it cannot administer the subscription.
+### 7. Update, roll back and operate
 
-```sh
-az identity create --name konda-github-deploy --resource-group "$AZURE_RESOURCE_GROUP"
-AZURE_CLIENT_ID=$(az identity show --name konda-github-deploy --resource-group "$AZURE_RESOURCE_GROUP" --query clientId --output tsv)
-DEPLOY_PRINCIPAL=$(az identity show --name konda-github-deploy --resource-group "$AZURE_RESOURCE_GROUP" --query principalId --output tsv)
-AZURE_TENANT_ID=$(az account show --query tenantId --output tsv)
-az identity federated-credential create --name github-container-azure \
-  --identity-name konda-github-deploy --resource-group "$AZURE_RESOURCE_GROUP" \
-  --issuer https://token.actions.githubusercontent.com \
-  --subject "repo:$REPO:environment:container-azure" --audiences api://AzureADTokenExchange
-az role assignment create --assignee-object-id "$DEPLOY_PRINCIPAL" \
-  --assignee-principal-type ServicePrincipal --role AcrPush --scope "$REGISTRY_ID"
-az role assignment create --assignee-object-id "$DEPLOY_PRINCIPAL" \
-  --assignee-principal-type ServicePrincipal --role Contributor --scope "$APP_ID"
-az role assignment create --assignee-object-id "$DEPLOY_PRINCIPAL" \
-  --assignee-principal-type ServicePrincipal --role Reader --scope "$ENVIRONMENT_ID"
-az role assignment create --assignee-object-id "$DEPLOY_PRINCIPAL" \
-  --assignee-principal-type ServicePrincipal --role 'Managed Identity Operator' --scope "$PULL_ID"
-
-gh variable set AZURE_CLIENT_ID --repo "$REPO" --env container-azure --body "$AZURE_CLIENT_ID"
-gh variable set AZURE_TENANT_ID --repo "$REPO" --env container-azure --body "$AZURE_TENANT_ID"
-gh variable set AZURE_SUBSCRIPTION_ID --repo "$REPO" --env container-azure --body "$AZURE_SUBSCRIPTION_ID"
-gh variable set AZURE_RESOURCE_GROUP --repo "$REPO" --env container-azure --body "$AZURE_RESOURCE_GROUP"
-gh variable set AZURE_CONTAINER_APP --repo "$REPO" --env container-azure --body "$AZURE_CONTAINER_APP"
-gh variable set AZURE_ACR_NAME --repo "$REPO" --env container-azure --body "$AZURE_ACR_NAME"
-gh variable set CONTAINER_PUBLIC_URL --repo "$REPO" --env container-azure --body "https://$DOMAIN"
-```
-
-You may initially set `CONTAINER_PUBLIC_URL` to `https://$AZURE_FQDN` while preparing DNS; switch it to `https://konda.com` after the certificate works. Client/tenant/subscription IDs are identifiers, not client secrets. GitHub obtains short-lived tokens via OIDC.
-
-### GCP: Cloud Run and Artifact Registry
-
-**1. Create the repository, unprivileged runtime identity, and service.** Use a billing-enabled project; the operator needs API-enablement, registry, Cloud Run, load-balancer, service-account, and IAM administration privileges. The runtime service account below intentionally has **no project roles**.
-
-```sh
-GCP_PROJECT_ID=REPLACE_WITH_PROJECT_ID
-GCP_REGION=europe-west4
-GCP_ARTIFACT_REPOSITORY=konda-sites
-GCP_CLOUD_RUN_SERVICE=konda-site
-gcloud config set project "$GCP_PROJECT_ID"
-gcloud services enable run.googleapis.com artifactregistry.googleapis.com compute.googleapis.com \
-  iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com --project "$GCP_PROJECT_ID"
-gcloud artifacts repositories create "$GCP_ARTIFACT_REPOSITORY" \
-  --repository-format docker --location "$GCP_REGION" --project "$GCP_PROJECT_ID"
-gcloud iam service-accounts create konda-site-runtime --project "$GCP_PROJECT_ID"
-RUNTIME_SA="konda-site-runtime@$GCP_PROJECT_ID.iam.gserviceaccount.com"
-gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
-IMAGE="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$GCP_ARTIFACT_REPOSITORY/konda-services:$RELEASE"
-docker buildx build --platform linux/amd64 --provenance=false \
-  --build-arg VALIDATE_PRODUCTION=true --tag "$IMAGE" --push .
-gcloud run deploy "$GCP_CLOUD_RUN_SERVICE" --project "$GCP_PROJECT_ID" --region "$GCP_REGION" \
-  --image "$IMAGE" --port 8080 --service-account "$RUNTIME_SA" \
-  --allow-unauthenticated --ingress all --cpu 1 --memory 512Mi --min-instances 0 --max-instances 3 \
-  --startup-probe 'httpGet.path=/healthz,httpGet.port=8080,periodSeconds=3,timeoutSeconds=2,failureThreshold=20' \
-  --liveness-probe 'httpGet.path=/healthz,httpGet.port=8080,periodSeconds=30,timeoutSeconds=2,failureThreshold=3' \
-  --quiet
-RUN_URL=$(gcloud run services describe "$GCP_CLOUD_RUN_SERVICE" --project "$GCP_PROJECT_ID" \
-  --region "$GCP_REGION" --format='value(status.url)')
-curl --fail --silent --show-error "$RUN_URL/healthz"
-```
-
-For a private repository in this same project, Cloud Run's service agent pulls the image; the runtime identity does not need Artifact Registry permissions. A cross-project registry needs explicit reader permission for that service agent. If organization policy blocks public invocation, have an administrator approve the public-site architecture rather than bypassing that policy. Cloud Run supplies `PORT`; its writable filesystem is ephemeral/in-memory, not persistent storage.
-
-**2. Put `konda.com` behind a global external HTTPS load balancer.** This production-oriented path avoids the regional limitations of Cloud Run's direct domain mapping. The managed load balancer and reserved public IP have separate ongoing costs even if Cloud Run scales to zero. The serverless NEG must be in the same region as the service; it does not use a traditional load-balancer health-check resource.
-
-```sh
-gcloud compute addresses create konda-ip --project "$GCP_PROJECT_ID" \
-  --ip-version IPV4 --network-tier PREMIUM --global
-gcloud compute network-endpoint-groups create konda-neg --project "$GCP_PROJECT_ID" \
-  --region "$GCP_REGION" --network-endpoint-type serverless --cloud-run-service "$GCP_CLOUD_RUN_SERVICE"
-gcloud compute backend-services create konda-backend --project "$GCP_PROJECT_ID" \
-  --load-balancing-scheme EXTERNAL_MANAGED --global
-gcloud compute backend-services add-backend konda-backend --project "$GCP_PROJECT_ID" --global \
-  --network-endpoint-group konda-neg --network-endpoint-group-region "$GCP_REGION"
-gcloud compute url-maps create konda-https-map --project "$GCP_PROJECT_ID" \
-  --default-service konda-backend --global
-gcloud compute ssl-certificates create konda-cert --project "$GCP_PROJECT_ID" \
-  --domains "$DOMAIN" --global
-gcloud compute ssl-policies create konda-tls --project "$GCP_PROJECT_ID" \
-  --profile MODERN --min-tls-version TLS_1_2 --global
-gcloud compute target-https-proxies create konda-https --project "$GCP_PROJECT_ID" \
-  --url-map konda-https-map --ssl-certificates konda-cert --ssl-policy konda-tls --global
-gcloud compute forwarding-rules create konda-https --project "$GCP_PROJECT_ID" \
-  --load-balancing-scheme EXTERNAL_MANAGED --network-tier PREMIUM --address konda-ip \
-  --target-https-proxy konda-https --global --ports 443
-
-gcloud compute url-maps import konda-http-redirect --project "$GCP_PROJECT_ID" \
-  --source infra/gcp/http-redirect.yaml --global --quiet
-gcloud compute target-http-proxies create konda-http --project "$GCP_PROJECT_ID" \
-  --url-map konda-http-redirect --global
-gcloud compute forwarding-rules create konda-http --project "$GCP_PROJECT_ID" \
-  --load-balancing-scheme EXTERNAL_MANAGED --network-tier PREMIUM --address konda-ip \
-  --target-http-proxy konda-http --global --ports 80
-gcloud compute addresses describe konda-ip --project "$GCP_PROJECT_ID" --global --format='value(address)'
-```
-
-At your authoritative DNS provider, create `A @` pointing to the **returned reserved IP**. Remove conflicting stale `A`/`AAAA` records; this example reserves only IPv4. Certificate issuance requires correct public DNS and an attached HTTPS proxy; it can take time. If CAA records exist, permit the authorities required by Google-managed certificates. Keep DNS-only mode if a DNS proxy would prevent certificate validation. Check issuance, verify HTTPS, then restrict direct Cloud Run ingress:
-
-```sh
-gcloud compute ssl-certificates describe konda-cert --project "$GCP_PROJECT_ID" \
-  --global --format='yaml(managed.status,managed.domainStatus)'
-curl --fail --silent --show-error "https://$DOMAIN/healthz"
-gcloud run services update "$GCP_CLOUD_RUN_SERVICE" --project "$GCP_PROJECT_ID" \
-  --region "$GCP_REGION" --ingress internal-and-cloud-load-balancing --quiet
-```
-
-Wait for certificate status `ACTIVE` before the HTTPS check. Public unauthenticated invocation remains necessary for the load balancer, while ingress restriction prevents Internet clients bypassing it through the `run.app` address. The workflow must therefore probe `https://konda.com`, not the now-restricted provider URL. This example neither configures `www.konda.com` nor enables Cloud CDN caching.
-
-**3. Create GitHub Workload Identity Federation, without service-account keys.** Use a dedicated deploy identity, repository-scoped Artifact Registry writer access, Cloud Run Developer, and permission to act as **only** the runtime identity. Prefer a dedicated project for this site. Numeric GitHub repository/owner IDs in the trust condition avoid relying solely on reusable names.
-
-```sh
-gcloud iam service-accounts create konda-github-deploy --project "$GCP_PROJECT_ID"
-GCP_DEPLOY_SERVICE_ACCOUNT="konda-github-deploy@$GCP_PROJECT_ID.iam.gserviceaccount.com"
-PROJECT_NUMBER=$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')
-REPOSITORY_ID=$(gh api "repos/$REPO" --jq .id)
-OWNER_ID=$(gh api "repos/$REPO" --jq .owner.id)
-gcloud iam workload-identity-pools create konda-github --project "$GCP_PROJECT_ID" \
-  --location global --display-name 'Konda GitHub deployments'
-gcloud iam workload-identity-pools providers create-oidc github --project "$GCP_PROJECT_ID" \
-  --location global --workload-identity-pool konda-github \
-  --issuer-uri https://token.actions.githubusercontent.com \
-  --attribute-mapping 'google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.ref=assertion.ref' \
-  --attribute-condition "assertion.repository_id == '$REPOSITORY_ID' && assertion.repository_owner_id == '$OWNER_ID' && assertion.ref == 'refs/heads/main' && assertion.sub == 'repo:$REPO:environment:container-gcp'"
-gcloud iam service-accounts add-iam-policy-binding "$GCP_DEPLOY_SERVICE_ACCOUNT" \
-  --project "$GCP_PROJECT_ID" --role roles/iam.workloadIdentityUser \
-  --member "principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/konda-github/attribute.repository_id/$REPOSITORY_ID" --quiet
-gcloud artifacts repositories add-iam-policy-binding "$GCP_ARTIFACT_REPOSITORY" \
-  --project "$GCP_PROJECT_ID" --location "$GCP_REGION" \
-  --member "serviceAccount:$GCP_DEPLOY_SERVICE_ACCOUNT" --role roles/artifactregistry.writer --quiet
-gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
-  --member "serviceAccount:$GCP_DEPLOY_SERVICE_ACCOUNT" --role roles/run.developer --condition=None --quiet
-gcloud iam service-accounts add-iam-policy-binding "$RUNTIME_SA" --project "$GCP_PROJECT_ID" \
-  --member "serviceAccount:$GCP_DEPLOY_SERVICE_ACCOUNT" --role roles/iam.serviceAccountUser --quiet
-GCP_WORKLOAD_IDENTITY_PROVIDER="projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/konda-github/providers/github"
-
-gh variable set GCP_PROJECT_ID --repo "$REPO" --env container-gcp --body "$GCP_PROJECT_ID"
-gh variable set GCP_REGION --repo "$REPO" --env container-gcp --body "$GCP_REGION"
-gh variable set GCP_ARTIFACT_REPOSITORY --repo "$REPO" --env container-gcp --body "$GCP_ARTIFACT_REPOSITORY"
-gh variable set GCP_CLOUD_RUN_SERVICE --repo "$REPO" --env container-gcp --body "$GCP_CLOUD_RUN_SERVICE"
-gh variable set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$REPO" --env container-gcp --body "$GCP_WORKLOAD_IDENTITY_PROVIDER"
-gh variable set GCP_DEPLOY_SERVICE_ACCOUNT --repo "$REPO" --env container-gcp --body "$GCP_DEPLOY_SERVICE_ACCOUNT"
-gh variable set CONTAINER_PUBLIC_URL --repo "$REPO" --env container-gcp --body "https://$DOMAIN"
-```
-
-Allow federation/IAM propagation before the first run. Before adding the load balancer you may use the provider's HTTPS URL for testing, but update `CONTAINER_PUBLIC_URL` when restricting ingress. The pipeline updates the existing service without resetting its ingress, runtime identity, scaling, or probes, then routes 100% of traffic to the verified new revision.
-
-### Start a GitHub deployment
-
-After reviewing and publishing these changes to `main`, open the repository's **Actions** tab and select the workflow backed by `.github/workflows/deploy-container.yml`. Choose **Run workflow → Branch: main → cloud: aws / azure / gcp**. You can also use:
-
-```sh
-gh workflow run deploy-container.yml --repo "$REPO" --ref main --field cloud=aws
-gh run list --repo "$REPO" --workflow deploy-container.yml --limit 5
-```
-
-Replace `aws` with `azure` or `gcp`. Open the run and approve its protected environment when requested. The workflow is not available in GitHub until the file has been pushed/merged to the default branch. It deliberately does **not** provision infrastructure, register the domain, modify DNS, or deploy automatically on a push/PR.
-
-The release sequence is:
-
-1. Check the branch, site configuration, types, unit tests, static output, and desktop/mobile browser tests without cloud credentials.
-2. Build the Linux/AMD64 production image and run the actual container tests. Transfer that **same tested image**, not a fresh rebuild, to the approved deployment job.
-3. Authenticate using the selected provider's OIDC identity, publish a unique release tag to its registry, and deploy the immutable **digest** to the existing service.
-4. Wait for the intended task/revision to become ready and receive traffic; reject failed deployments or AWS rollbacks rather than accepting an older healthy revision.
-5. Probe `CONTAINER_PUBLIC_URL` for health, expected built pages, security headers, and a real 404. Record the release image and previous task/revision in the run summary for recovery.
-
-Deployments to the same provider are serialized and running releases are not automatically cancelled. Provider variables live in the corresponding GitHub **environment**, not in `site.config.json`. There are no static AWS access keys, Azure client secrets, or GCP service-account key files. The legacy S3 workflow remains validation-only unless repository variable `ENABLE_AWS_STATIC_DEPLOY=true` is deliberately enabled; do not enable it for this container setup.
-
-**Other clouds or your own server:** run the same OCI image as UID `101:101`, expose port `8080` behind an HTTPS reverse proxy/load balancer, provide writable `/tmp`, and probe `/healthz`. The container itself is portable; the supplied automated adapters cover AWS, Azure, and GCP, not every possible provider. A hardened local example is:
-
-```sh
-docker build --build-arg VALIDATE_PRODUCTION=true --tag konda-services:release .
-docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges \
-  --tmpfs /tmp:rw,noexec,nosuid,size=16m,mode=1777 \
-  --publish 127.0.0.1:8081:8080 konda-services:release
-```
-
-### Verify, roll back, and operate
-
-After the selected cloud reports a successful deployment, check both DNS and HTTPS. Never use `curl -k` or disable certificate verification to make a release pass:
-
-```sh
-dig +short konda.com A
-curl --fail --silent --show-error https://konda.com/healthz
-curl --silent --show-error --head http://konda.com/
-curl --silent --show-error --head https://konda.com/
-curl --silent --show-error --head https://konda.com/this-page-does-not-exist.html
-```
-
-Expect HTTPS health `200`, an HTTP-to-HTTPS redirect, the configured security headers, and a genuine `404` for the missing page. The workflow's final verification step can also be run by hand against a local build of the same commit; it compares every deployed page and asset byte-for-byte with `dist/`, checks the security headers on successes and errors, and refuses redirects:
-
-```sh
-npm run build
-npm run verify:deployment -- --url https://konda.com
-```
-
-Check the address and WhatsApp link on the homepage and all five capability pages; a successful link test does not prove the number has an active WhatsApp account. Check search indexing settings when intentionally going public. `www.konda.com` is not included: to use it, add it to the certificate and DNS and configure an explicit redirect to the canonical apex.
-
-For a normal rollback, restore the approved code/configuration through a reviewed change on `main`, then run the same workflow again. This rebuilds HTML, assets, and matching security headers together. For urgent operator recovery, use the **previous known-good value recorded in the deployment summary**:
-
-```sh
-# AWS: use the previous task-definition ARN, not an arbitrary revision number.
-OLD_TASK_DEFINITION_ARN=REPLACE_WITH_PREVIOUS_ARN
-aws ecs update-service --region "$AWS_REGION" --cluster "$AWS_ECS_CLUSTER" \
-  --service "$AWS_ECS_SERVICE" --task-definition "$OLD_TASK_DEFINITION_ARN"
-aws ecs wait services-stable --region "$AWS_REGION" --cluster "$AWS_ECS_CLUSTER" --services "$AWS_ECS_SERVICE"
-```
-
-```sh
-# Azure Single mode: redeploy the previous immutable image as a new revision.
-OLD_IMAGE_URI=REPLACE_WITH_PREVIOUS_REGISTRY_IMAGE_AT_SHA256_DIGEST
-az containerapp update --name "$AZURE_CONTAINER_APP" --resource-group "$AZURE_RESOURCE_GROUP" --image "$OLD_IMAGE_URI"
-```
-
-```sh
-# GCP: send traffic back to the previous ready revision.
-OLD_REVISION=REPLACE_WITH_PREVIOUS_READY_REVISION_NAME
-gcloud run services update-traffic "$GCP_CLOUD_RUN_SERVICE" --project "$GCP_PROJECT_ID" \
-  --region "$GCP_REGION" --to-revisions "$OLD_REVISION=100" --quiet
-```
-
-Recheck the actual active task/revision and public endpoint after recovery. Keep old registry digests/task definitions/revisions for your agreed rollback window; do not apply a blanket registry cleanup policy. A failed public probe fails the workflow but does not automatically undo every provider-side change; inspect the recorded state before retrying or rolling back. Rolling updates can briefly serve mixed revisions; HTML revalidation reduces but does not eliminate old-page/old-hashed-asset races. For releases that change asset names, plan backward-compatible assets or shared versioned asset storage; this starter does not retain assets across image versions.
+- **Content or theme changes:** edit `site.config.json`, open a pull request against `S3-hosting` (the workflow builds and tests it without deploying), merge, approve the release. Changing the form endpoint or provider changes the CSP; the release updates pages and the CloudFront header policy together.
+- **Stack updates** (domain, template changes): always rebuild first and pass the current `.deploy/csp.txt` plus the same domain parameters, otherwise CloudFormation resets the header policy to its bootstrap values. Re-run the release afterwards to restore the generated policy, and never run a stack update while a release is in progress.
+- **Roll back:** revert the offending commit on `S3-hosting` (or re-run the last known-good workflow run from the Actions tab; artifacts are kept for 14 days) and approve the release. This republishes the matching HTML, assets, and header policy together. Object versions in the bucket are an additional operator-only recovery path — restore a consistent set, then invalidate.
+- **Nothing is deleted automatically.** A removed page stays reachable until an operator deletes its object (`aws s3 rm s3://$S3_BUCKET/old-page.html`) and invalidates its path; old `_astro/` hashes are intentionally retained so cached pages never lose their stylesheet. Prune old hashes only after cache lifetimes and rollback windows have passed.
+- **Costs:** S3 storage/requests for a few hundred kilobytes, CloudFront requests and transfer (`PriceClass_100`: North America and Europe edges), one invalidation path per release (the first 1,000 per month are free), the Route 53 hosted zone, and nothing for ACM. Set a budget alert.
+- **Decommission:** remove DNS first, delete the stack (`aws cloudformation delete-stack`), then empty and delete the retained bucket and its versions, and delete the IAM role, the certificate, and the hosted zone if no longer needed. Deleting the stack alone keeps the bucket and its data.
 
 Common failures and next actions:
 
-- **OIDC denied:** compare the exact repository/environment subject, audience, branch restriction, and selected identity; wait for IAM propagation. Do not broaden trust to `*` or add long-lived keys.
-- **Image pull denied:** check registry location, the runtime pull identity/service agent or ECS execution role, and registry-scoped access. Build the image for `linux/amd64`.
-- **Revision unhealthy:** check logs, port `8080`, `/healthz`, non-root permissions, and writable `/tmp`. On AWS, verify subnet routes/outbound HTTPS and ALB-only task ingress.
-- **Certificate pending:** verify authoritative DNS, apex records, CAA restrictions, domain-verification records, and certificate attachment. Do not point an apex CNAME at a provider hostname.
-- **Probe reaches the old site:** check `CONTAINER_PUBLIC_URL`, DNS and any stale `AAAA` record, traffic allocation, cache settings, and the expected release digest. On GCP, use the load-balancer domain after restricting ingress.
-
-Review cloud costs and configure budgets/alerts, log-retention policies, vulnerability monitoring, and application availability alerts. Rebuild regularly for pinned dependency/base-image updates; do not patch running containers. Scaling to zero does not remove registry, load-balancer, IP, logging, or DNS charges. To decommission, first plan DNS/traffic removal, then inventory and remove only the dedicated resources you intend to retire; AWS logs, registry images, and the hosted zone are intentionally not removed by deleting the application stack.
-
-Provider references: [AWS GitHub OIDC](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html), [ECS deployments](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/deployment-type-ecs.html), [Azure managed identity pulls](https://learn.microsoft.com/en-us/azure/container-apps/managed-identity-image-pull), [Azure custom-domain certificates](https://learn.microsoft.com/en-us/azure/container-apps/custom-domains-managed-certificates), [Azure GitHub OIDC](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect), [GCP deployment federation](https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines), [GCP serverless HTTPS load balancer](https://cloud.google.com/load-balancing/docs/https/setup-global-ext-https-serverless).
+- **`Missing production environment variable`:** the environment is named differently, a variable is unset, or it was created at repository level instead of inside `production`.
+- **OIDC `Not authorized to perform sts:AssumeRoleWithWebIdentity`:** compare the trust subject (`repo:$REPO:environment:production`), the audience `sts.amazonaws.com`, the provider ARN, and the environment name; wait a minute for IAM propagation. Do not add access keys or widen the subject.
+- **`Branch is not allowed to deploy to production`:** the environment's branch rule does not include `S3-hosting`.
+- **Stack stuck in `CREATE_IN_PROGRESS` on the certificate:** DNS is not delegated to the hosted zone (Option A) or the validation CNAME is missing (Option B). Fix DNS; do not switch to email validation.
+- **`PUBLIC_URL host … is not an alias of this distribution`:** the stack was created without `DomainName`, or with a different hostname; update the stack, then retry.
+- **Verifier reports a stale body or a redirect on the domain:** DNS still points elsewhere, a CDN/proxy sits in front of CloudFront, or an old `AAAA` record remains. Check `dig` output and the distribution's aliases.
+- **Verifier reports a missing header on `404` responses:** the header policy is not attached to the default behaviour or a stack update reset it; re-run the release.
 
 ## Verification
 
@@ -676,21 +421,14 @@ npm run build
 npx playwright install chromium
 npm run test:e2e
 npm audit --audit-level=high
-```
-
-With Docker available, also run:
-
-```sh
-npm run container:build
-npm run test:container
+npm run preview   # then, in another terminal:
+npm run verify:deployment -- --url http://127.0.0.1:4321 --allow-local
 ```
 
 - `check`: Astro/TypeScript diagnostics.
-- `test`: schema, URL/routing validation, theme injection prevention, production configuration gates, security-policy consistency, and the container release contract (provider variable validation, ECS task-definition rewriting, readiness/rollback detection for ECS, Container Apps, and Cloud Run, and deployment verification against a loopback server).
-- `build`: generates static pages and audits every link/anchor, verbatim service payload, external stylesheet, form action, security header, and emitted artifact. Unexpected scripts, inline styles, source files, or runtime files fail the build.
+- `test`: schema, URL/routing validation, theme injection prevention, production configuration gates, CloudFront policy consistency, the release-contract guards for the workflow/template/docs, and the deployment verifier against a loopback S3/CloudFront stand-in (redirects, stale bytes, cache metadata, MIME types, soft 404s, missing headers, timeouts, retries).
+- `build`: generates static pages and audits every link/anchor, verbatim service payload, external stylesheet, form action, security header, and emitted artifact. Unexpected scripts, inline styles, source files, runtime files, or files with reserved `.`/`_` prefixes outside `_astro/` fail the build.
 - `test:e2e`: desktop/mobile Chromium, automated WCAG checks, narrow screens, keyboard/no-JavaScript navigation, security headers, enforced CSP, and native form validation/POST behavior. A **separate test-only form build** lives under `.test-build/`; it is never published. External submissions are intercepted, so tests do not send enquiries to a real service.
-- `test:container`: real non-root/read-only Nginx, health checks, default/custom ports, static content, caching, headers on errors, source-file exclusion, and invalid-port rejection; containers are cleaned up after testing.
-- `validate:production`: rejects placeholder domains, invalid contact data, and configurations without a contact channel; it does not prove ownership or account reachability.
-- `verify:deployment`: probes a deployed HTTPS origin (`--url`, or `CONTAINER_PUBLIC_URL`) for `/healthz`, every built page and asset, expected `404` responses, and strict security headers; `--allow-local` is only for an explicit loopback test server.
+- `verify:deployment`: compares any origin — the local preview, the `*.cloudfront.net` hostname, or `https://konda.com` — with the current `dist/` and generated headers; it needs only Node.js, so the release job runs it straight from the build artifact.
 
-Automated accessibility scans are not a complete manual accessibility audit. Browser tests do not verify a real provider account or AWS permissions; use the deployment runbook's live checks once those resources exist.
+Static checks for the infrastructure files: `actionlint .github/workflows/deploy.yml` and `cfn-lint infra/aws/site.yaml` (for example `uvx --from cfn-lint cfn-lint infra/aws/site.yaml`). They validate syntax and schema, not IAM permissions, DNS, or certificate ownership in your account.

@@ -1,5 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Private static site on S3 and CloudFront, without an edge or server runtime.
+Description: >-
+  Static website on a private S3 bucket behind CloudFront (Origin Access Control), with HTTPS for a custom
+  domain and no edge or server runtime. Deploy this stack in us-east-1 when it should issue the certificate.
 
 Parameters:
   ContentSecurityPolicy:
@@ -10,33 +12,55 @@ Parameters:
     AllowedPattern: '^(?!.*(?i:unsafe-inline|unsafe-eval)).+$'
     ConstraintDescription: Supply a single-line CSP without unsafe-inline or unsafe-eval.
     Default: "default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; manifest-src 'none'; upgrade-insecure-requests"
-  CustomDomainName:
+  DomainName:
+    Type: String
+    Default: konda.com
+    Description: >-
+      Public hostname served by CloudFront, without a scheme or path. Leave empty to use only the
+      *.cloudfront.net hostname.
+    AllowedPattern: '^$|(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$'
+    ConstraintDescription: Use a lowercase DNS hostname such as konda.com, or an empty string.
+  HostedZoneId:
     Type: String
     Default: ''
-    Description: Optional exact public hostname, without a scheme or path.
-    AllowedPattern: '^$|(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$'
+    Description: >-
+      Public Route 53 hosted zone for DomainName. When set, the stack issues a DNS-validated ACM certificate
+      (the stack must then run in us-east-1) and creates the apex A/AAAA alias records to CloudFront.
+    AllowedPattern: '^$|^Z[0-9A-Z]{1,31}$'
+    ConstraintDescription: Use the bare hosted zone ID (for example Z0123456789ABCDEFGHIJ), not /hostedzone/....
   AcmCertificateArn:
     Type: String
     Default: ''
-    Description: Optional issued ACM certificate in us-east-1, covering CustomDomainName.
+    Description: >-
+      Already issued ACM certificate in us-east-1 covering DomainName, for DNS hosted outside Route 53.
+      Leave empty when HostedZoneId is set.
     AllowedPattern: '^$|^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[0-9a-f-]+$'
+    ConstraintDescription: CloudFront only accepts certificates from ACM in us-east-1.
 
 Rules:
-  DomainAndCertificateTogether:
+  DomainNeedsExactlyOneCertificateSource:
     Assertions:
       - Assert: !Or
           - !And
-            - !Equals [!Ref CustomDomainName, '']
+            - !Equals [!Ref DomainName, '']
+            - !Equals [!Ref HostedZoneId, '']
             - !Equals [!Ref AcmCertificateArn, '']
           - !And
-            - !Not [!Equals [!Ref CustomDomainName, '']]
-            - !Not [!Equals [!Ref AcmCertificateArn, '']]
-        AssertDescription: Supply both CustomDomainName and AcmCertificateArn, or neither.
+            - !Not [!Equals [!Ref DomainName, '']]
+            - !Or
+              - !And
+                - !Not [!Equals [!Ref HostedZoneId, '']]
+                - !Equals [!Ref AcmCertificateArn, '']
+              - !And
+                - !Equals [!Ref HostedZoneId, '']
+                - !Not [!Equals [!Ref AcmCertificateArn, '']]
+        AssertDescription: >-
+          With a DomainName supply exactly one of HostedZoneId (Route 53 managed certificate and records) or
+          AcmCertificateArn (external DNS). Without a DomainName leave both empty.
 
 Conditions:
-  HasCustomDomain: !And
-    - !Not [!Equals [!Ref CustomDomainName, '']]
-    - !Not [!Equals [!Ref AcmCertificateArn, '']]
+  HasCustomDomain: !Not [!Equals [!Ref DomainName, '']]
+  ManagesDns: !Not [!Equals [!Ref HostedZoneId, '']]
 
 Resources:
   SiteBucket:
@@ -58,6 +82,22 @@ Resources:
         RestrictPublicBuckets: true
       VersioningConfiguration:
         Status: Enabled
+      Tags:
+        - Key: Project
+          Value: konda-services
+
+  SiteCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: ManagesDns
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Project
+          Value: konda-services
 
   OriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
@@ -118,12 +158,21 @@ Resources:
         CustomHeadersConfig:
           Items:
             - Header: Permissions-Policy
-              Value: 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()'
+              Value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+              Override: true
+            - Header: Cross-Origin-Opener-Policy
+              Value: same-origin
+              Override: true
+            - Header: Cross-Origin-Resource-Policy
+              Value: same-origin
               Override: true
 
   SiteDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
+      Tags:
+        - Key: Project
+          Value: konda-services
       DistributionConfig:
         Enabled: true
         Comment: !Sub '${AWS::StackName} static site'
@@ -131,10 +180,10 @@ Resources:
         HttpVersion: http2and3
         IPV6Enabled: true
         PriceClass: PriceClass_100
-        Aliases: !If [HasCustomDomain, [!Ref CustomDomainName], !Ref 'AWS::NoValue']
+        Aliases: !If [HasCustomDomain, [!Ref DomainName], !Ref 'AWS::NoValue']
         ViewerCertificate: !If
           - HasCustomDomain
-          - AcmCertificateArn: !Ref AcmCertificateArn
+          - AcmCertificateArn: !If [ManagesDns, !Ref SiteCertificate, !Ref AcmCertificateArn]
             SslSupportMethod: sni-only
             MinimumProtocolVersion: TLSv1.2_2021
           - CloudFrontDefaultCertificate: true
@@ -189,25 +238,56 @@ Resources:
               StringEquals:
                 'AWS:SourceArn': !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}'
 
+  # CloudFront's fixed Route 53 hosted zone ID for alias records is Z2FDTNDATAQYW2 in every region.
+  ApexDnsRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Condition: ManagesDns
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Comment: !Sub '${AWS::StackName}: apex alias records to CloudFront'
+      RecordSets:
+        - Name: !Sub '${DomainName}.'
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt SiteDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+            EvaluateTargetHealth: false
+        - Name: !Sub '${DomainName}.'
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt SiteDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+            EvaluateTargetHealth: false
+
 Outputs:
   AWSRegion:
+    Description: Region of the bucket; also the value for the AWS_REGION deployment variable.
     Value: !Ref 'AWS::Region'
   S3BucketName:
+    Description: Value for the S3_BUCKET deployment variable.
     Value: !Ref SiteBucket
   S3BucketArn:
     Value: !GetAtt SiteBucket.Arn
   CloudFrontDistributionId:
+    Description: Value for the CLOUDFRONT_DISTRIBUTION_ID deployment variable.
     Value: !Ref SiteDistribution
   CloudFrontDistributionArn:
     Value: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}'
   CloudFrontDomainName:
+    Description: DNS target for the domain (alias/ANAME or CNAME); also served directly over HTTPS.
     Value: !GetAtt SiteDistribution.DomainName
   CloudFrontResponseHeadersPolicyId:
+    Description: Value for the CLOUDFRONT_RESPONSE_HEADERS_POLICY_ID deployment variable.
     Value: !Ref SiteResponseHeadersPolicy
   CloudFrontResponseHeadersPolicyArn:
     Value: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:response-headers-policy/${SiteResponseHeadersPolicy}'
+  CertificateArn:
+    Condition: HasCustomDomain
+    Description: ACM certificate attached to CloudFront for DomainName.
+    Value: !If [ManagesDns, !Ref SiteCertificate, !Ref AcmCertificateArn]
   SiteUrl:
+    Description: Public site URL; use it as PUBLIC_URL once DNS resolves to the distribution.
     Value: !If
       - HasCustomDomain
-      - !Sub 'https://${CustomDomainName}'
+      - !Sub 'https://${DomainName}'
       - !Sub 'https://${SiteDistribution.DomainName}'

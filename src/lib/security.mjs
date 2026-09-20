@@ -49,11 +49,6 @@ export function createCloudFrontPolicy(config) {
   };
 }
 
-export function renderNginxHeaders(config) {
-  const quote = (value) => `"${value.replace(/[\\"$]/g, '\\$&')}"`;
-  return `${Object.entries(createSecurityHeaders(config)).map(([name, value]) => `add_header ${name} ${quote(value)} always;`).join('\n')}\n`;
-}
-
 export function renderTheme(config) {
   const { colors, fonts, radius, maxWidth } = config.theme;
   const tokens = [
