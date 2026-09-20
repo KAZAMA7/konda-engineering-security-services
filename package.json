@@ -1,0 +1,33 @@
+{
+  "name": "konda-services",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "dev": "npm run generate && astro dev --host 127.0.0.1",
+    "check": "npm run generate && astro check",
+    "build": "npm run generate && astro build && node scripts/verify-build.mjs",
+    "preview": "node scripts/preview.mjs",
+    "test": "node --test tests/config.test.mjs tests/security.test.mjs",
+    "test:e2e": "playwright test",
+    "container:build": "docker build --tag konda-services:local .",
+    "test:container": "node --test tests/container.test.mjs",
+    "validate:production": "node scripts/validate-production.mjs"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "^24.13.6",
+    "astro": "7.3.3",
+    "linkedom": "0.18.13",
+    "tailwindcss": "4.3.3",
+    "typescript": "^6.0.0",
+    "zod": "4.6.5"
+  }
+}

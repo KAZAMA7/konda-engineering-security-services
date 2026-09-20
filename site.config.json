@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "site": {
+    "name": "Konda Engineering and security services",
+    "monogram": "KES",
+    "url": "https://example.com",
+    "locale": "en-IN",
+    "title": "Konda Engineering and security services | Security, engineered for what comes next",
+    "description": "Expert-led Security Architecture, Pentesting, DevSecOps, GRC and Platform Engineering services, with a strategic focus on India and the UAE.",
+    "indexable": false
+  },
+  "routes": {
+    "home": "/",
+    "privacy": "/privacy.html",
+    "notFound": "/404.html"
+  },
+  "theme": {
+    "colors": {
+      "canvas": "#080D14",
+      "surface": "#101A27",
+      "elevated": "#152335",
+      "border": "#2B3D51",
+      "text": "#F4F8FC",
+      "muted": "#ACBDCD",
+      "accent": "#5EE7B7",
+      "secondary": "#81B8FF",
+      "onAccent": "#08251C"
+    },
+    "fonts": {
+      "body": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+      "mono": "SFMono-Regular, Consolas, Liberation Mono, monospace"
+    },
+    "radius": {
+      "card": "1.25rem",
+      "button": "0.5rem"
+    },
+    "maxWidth": "80rem"
+  },
+  "ui": {
+    "skipLink": "Skip to main content",
+    "mainNavigation": "Main navigation",
+    "mobileNavigation": "Mobile navigation",
+    "menuLabel": "Menu",
+    "homeLabel": "Konda Engineering and security services home",
+    "legalNavigation": "Legal navigation",
+    "emailLabel": "Email",
+    "phoneLabel": "Phone",
+    "requiredLabel": "Required",
+    "backToTop": "Back to top"
+  },
+  "navigation": [
+    { "label": "Expertise", "href": "#expertise" },
+    { "label": "Our approach", "href": "#approach" },
+    { "label": "About us", "href": "#about" }
+  ],
+  "header": {
+    "descriptor": "Security & engineering",
+    "contactCta": { "label": "Let's talk", "href": "#contact" }
+  },
+  "hero": {
+    "id": "top",
+    "eyebrow": "Independent thinking. Integrated security.",
+    "headline": "Security, engineered",
+    "accentLine": "for what comes next.",
+    "description": "Move forward with confidence. We bring architectural depth and hands-on engineering to your most important cloud and cybersecurity challenges.",
+    "primaryCta": { "label": "Explore our expertise", "href": "#expertise" },
+    "secondaryCta": { "label": "Discuss your priorities", "href": "#contact" },
+    "signals": ["Expert-led engagements", "Cloud-agnostic thinking", "India & UAE focus"],
+    "visual": {
+      "eyebrow": "The resilience blueprint",
+      "title": "Security is a system.",
+      "description": "Not a collection of tools.",
+      "layers": [
+        { "title": "Governance", "description": "Align risk with business ambition", "icon": "compass" },
+        { "title": "Architecture", "description": "Design trust into every layer", "icon": "layers" },
+        { "title": "Engineering", "description": "Make secure delivery repeatable", "icon": "terminal" }
+      ],
+      "footer": "Clarity at every layer. Confidence in every decision."
+    }
+  },
+  "services": {
+    "id": "expertise",
+    "eyebrow": "Our expertise",
+    "title": "Deep expertise.\nPractical outcomes.",
+    "intro": "From the first architectural decision to the next production release, we connect security strategy to the engineering that makes it real.",
+    "capabilityLabel": "Capability",
+    "ctaLabel": "Discuss this capability",
+    "items": [
+      {
+        "id": "devsecops-cloud",
+        "icon": "terminal",
+        "title": "DevSecOps",
+        "description": "Accelerate delivery without compromising safety. We embed robust security controls directly into your CI/CD pipelines, shifting security left to catch vulnerabilities before they reach production. We build resilient architectures that scale across complex cloud workloads.",
+        "tags": ["Secure CI/CD", "Cloud foundations", "Platform resilience"]
+      },
+      {
+        "id": "security-architecture",
+        "icon": "layers",
+        "title": "Security Architecture",
+        "description": "Transform security from a reactive barrier into a strategic enabler. We design enterprise ecosystems specializing in Zero Trust, robust identity management, and advanced endpoint protection across hybrid and multi-cloud environments.",
+        "tags": ["Zero Trust", "Identity & access", "Hybrid & multi-cloud"]
+      },
+      {
+        "id": "governance-risk-compliance",
+        "icon": "compass",
+        "title": "Governance, Risk, & Compliance (GRC)",
+        "description": "Navigate the complex regulatory landscape with absolute confidence. We conduct comprehensive risk modeling, establish continuous compliance automation, and build resilient governance frameworks to satisfy internal stakeholders and strict global regulators.",
+        "tags": ["Risk modeling", "Compliance automation", "Governance"]
+      },
+      {
+        "id": "offensive-security",
+        "icon": "target",
+        "title": "Pentesting",
+        "description": "Uncover your blind spots before adversaries do. We simulate sophisticated attacks against web applications, APIs, and cloud infrastructure to identify weaknesses, demonstrating business impact and providing a prioritized remediation roadmap.",
+        "tags": ["Web & API testing", "Cloud security testing", "Actionable remediation"]
+      },
+      {
+        "id": "platform-engineering",
+        "icon": "layers",
+        "title": "Platform Engineering",
+        "description": "Give your engineering teams a secure, reliable foundation for delivery. We design internal developer platforms, automate infrastructure as code, and create self-service workflows with built-in guardrails. From Kubernetes to cloud landing zones, we make platforms easier to operate, observe, and scale across AWS, Azure, and GCP.",
+        "tags": ["Developer platforms", "Infrastructure as code", "Kubernetes & observability"]
+      }
+    ]
+  },
+  "approach": {
+    "id": "approach",
+    "eyebrow": "How we work",
+    "title": "Business context first.\nSecurity that follows through.",
+    "intro": "Clear decisions, accountable delivery, and knowledge that stays with your team. Every engagement is shaped around your environment and your priorities.",
+    "steps": [
+      { "title": "Understand", "description": "Establish your business objectives, risk exposure, and the realities of your technology landscape." },
+      { "title": "Architect", "description": "Translate the findings into a pragmatic target architecture and a prioritized, achievable roadmap." },
+      { "title": "Enable", "description": "Work alongside your teams to embed controls, validate improvements, and build lasting capability." }
+    ]
+  },
+  "about": {
+    "id": "about",
+    "eyebrow": "The thinking behind the work",
+    "title": "Expert-led.\nEnterprise-minded.",
+    "paragraphs": [
+      "Founded by a seasoned Security Architect holding CISSP, SABSA, and RHCA credentials, Konda Engineering and security services brings together enterprise security thinking and the engineering discipline to put it into practice.",
+      "We help organizations make confident decisions across cloud security, architecture, and proactive risk management. Our strategic operational focus in India and the UAE connects regional understanding with enterprise-grade practices.",
+      "We believe the strongest security programs enable progress. That means independent advice, proportionate controls, and a clear line from technical decisions to business outcomes."
+    ],
+    "credentialsLabel": "Leadership credentials",
+    "credentials": [
+      { "name": "CISSP", "detail": "Security leadership" },
+      { "name": "SABSA", "detail": "Business-driven architecture" },
+      { "name": "RHCA", "detail": "Engineering depth" }
+    ],
+    "regionLabel": "Regional focus. Global perspective.",
+    "regions": ["India", "United Arab Emirates"]
+  },
+  "contact": {
+    "id": "contact",
+    "eyebrow": "Start a conversation",
+    "title": "What are you\nbuilding towards?",
+    "intro": "A stronger security posture. A more resilient platform. A clearer path forward. Tell us what matters to your business, and let's explore the right next step.",
+    "email": "",
+    "phone": "",
+    "safetyNote": "Please do not send passwords, access tokens, sensitive customer data, or details of unpatched vulnerabilities through this channel.",
+    "unavailableTitle": "A conversation starts here.",
+    "unavailableDescription": "Our enquiry channel is being prepared. Verified contact details will be published here once available.",
+    "form": {
+      "endpoint": "",
+      "providerName": "",
+      "title": "Tell us about your priorities",
+      "intro": "Share a little context so we can make the first conversation useful.",
+      "fields": {
+        "name": { "label": "Your name", "placeholder": "Full name" },
+        "email": { "label": "Work email", "placeholder": "you@company.com" },
+        "company": { "label": "Organization (optional)", "placeholder": "Organization name" },
+        "message": { "label": "How can we help?", "placeholder": "Your priorities, challenges, or the scope you have in mind" }
+      },
+      "honeypotLabel": "Leave this field empty",
+      "submitLabel": "Send enquiry",
+      "externalNotice": "Your enquiry is sent directly to",
+      "privacyPrefix": "Before sending, please read our",
+      "privacyLabel": "privacy notice",
+      "subject": "New consulting enquiry"
+    }
+  },
+  "privacy": {
+    "eyebrow": "Privacy & transparency",
+    "title": "Your information, handled with care.",
+    "intro": "This notice explains how information is handled when you visit this website or contact us about our services.",
+    "sections": [
+      {
+        "title": "A deliberately minimal website",
+        "paragraphs": ["This website is delivered as static files. It does not use advertising trackers, analytics scripts, cookies, or browser storage. Our hosting and content delivery providers may process technical access data, such as IP addresses, requested pages, and browser details, to deliver and protect the website."]
+      },
+      {
+        "title": "When you contact us",
+        "paragraphs": ["If you send an enquiry, we use the information you provide to respond, understand your requirements, and manage the resulting business conversation. Please share only the information needed for that purpose.", "When the enquiry form is available, submissions go directly to the external service named beside the form. That provider may process or store your submission under its own terms. We do not operate a form-processing server or database on this website. Email enquiries are handled by the relevant email providers."]
+      },
+      {
+        "title": "Retention and access",
+        "paragraphs": ["Enquiry information is retained for the business conversation and any resulting engagement, subject to applicable legal obligations. Access should be limited to people and service providers who need it for those purposes. Please do not submit secrets, regulated datasets, or vulnerability reports through a general enquiry."]
+      },
+      {
+        "title": "Questions and requests",
+        "paragraphs": ["Use the published contact channel to ask about your information or request access, correction, or deletion. Requests are considered in accordance with applicable law and any necessary identity verification. This notice should be reviewed when the website's hosting, enquiry providers, or data-handling practices change."]
+      }
+    ],
+    "backLabel": "Return to the homepage"
+  },
+  "notFound": {
+    "eyebrow": "404 / Page not found",
+    "title": "A missing page.\nNot a dead end.",
+    "description": "The page you're looking for may have moved, or the address may be incorrect. Our expertise is a good place to start again.",
+    "backLabel": "Back to the homepage"
+  },
+  "footer": {
+    "tagline": "Security by design. Confidence by default.",
+    "copyrightStartYear": 2026,
+    "copyright": "Konda Engineering and security services. All rights reserved.",
+    "links": [{ "label": "Privacy", "href": "/privacy.html" }]
+  }
+}

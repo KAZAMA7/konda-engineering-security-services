@@ -1,0 +1,45 @@
+---
+import { site } from '../lib/config.mjs';
+import Icon from './Icon.astro';
+const { hero } = site;
+---
+<section id={hero.id} class="hero-section relative overflow-hidden border-b border-border" aria-labelledby={`${hero.id}-heading`}>
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="shell relative grid items-center gap-14 py-20 lg:grid-cols-[1.2fr_1fr] lg:gap-16 lg:py-28">
+    <div>
+      <p class="eyebrow flex items-center gap-3"><span class="size-2 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>{hero.eyebrow}</p>
+      <h1 id={`${hero.id}-heading`} class="hero-heading mt-7 font-semibold tracking-tight">
+        {hero.headline}<span class="mt-1 block text-accent">{hero.accentLine}</span>
+      </h1>
+      <p class="mt-7 max-w-xl text-lg leading-relaxed text-muted">{hero.description}</p>
+      <div class="mt-9 flex flex-wrap items-center gap-4">
+        <a class="button button-primary" href={hero.primaryCta.href}>{hero.primaryCta.label}<Icon name="arrow" class="size-5" /></a>
+        <a class="button button-quiet" href={hero.secondaryCta.href}>{hero.secondaryCta.label}</a>
+      </div>
+      <ul class="mt-10 flex flex-wrap gap-x-5 gap-y-3 text-xs text-muted">
+        {hero.signals.map((signal) => <li class="flex items-center gap-2"><Icon name="check" class="size-4 text-accent" />{signal}</li>)}
+      </ul>
+    </div>
+    <div class="blueprint relative rounded-card border border-border bg-surface p-6 sm:p-8">
+      <div class="flex items-center justify-between gap-4 border-b border-border pb-5">
+        <p class="font-mono text-[0.65rem] tracking-[0.16em] text-muted uppercase">{hero.visual.eyebrow}</p>
+        <Icon name="shield" class="size-6 shrink-0 text-accent" />
+      </div>
+      <p class="mt-7 text-2xl font-medium tracking-tight">{hero.visual.title}</p>
+      <p class="mt-1 text-sm text-muted">{hero.visual.description}</p>
+      <ol class="blueprint-layers relative mt-8 space-y-4">
+        {hero.visual.layers.map((layer, index) => (
+          <li class="relative flex items-center gap-4 rounded-button border border-border bg-canvas p-4">
+            <span class="grid size-10 shrink-0 place-items-center rounded-button border border-accent/20 bg-accent/5 text-accent"><Icon name={layer.icon} class="size-5" /></span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium">{layer.title}</p>
+              <p class="mt-1 text-xs leading-relaxed text-muted">{layer.description}</p>
+            </div>
+            <span class="font-mono text-xs text-muted" aria-hidden="true">0{index + 1}</span>
+          </li>
+        ))}
+      </ol>
+      <p class="mt-7 border-t border-border pt-5 font-mono text-[0.65rem] leading-relaxed text-muted">{hero.visual.footer}</p>
+    </div>
+  </div>
+</section>

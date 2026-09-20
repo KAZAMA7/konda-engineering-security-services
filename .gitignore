@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.astro/
+.deploy/
+.test-build/
+public/_headers
+public/theme.css
+public/favicon.svg
+public/robots.txt
+public/sitemap.xml
+playwright-report/
+test-results/
+.env
+.env.*
+.DS_Store
+.output.txt

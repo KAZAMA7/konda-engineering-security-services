@@ -1,0 +1,23 @@
+---
+import { homeHref, site } from '../lib/config.mjs';
+import Icon from './Icon.astro';
+const year = new Date().getUTCFullYear();
+const years = year > site.footer.copyrightStartYear ? `${site.footer.copyrightStartYear}–${year}` : site.footer.copyrightStartYear;
+---
+<footer class="border-t border-border py-10">
+  <div class="shell">
+    <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+      <div>
+        <a href={site.routes.home} class="text-lg font-semibold tracking-tight">{site.site.name}</a>
+        <p class="mt-2 text-sm text-muted">{site.footer.tagline}</p>
+      </div>
+      <a class="inline-flex min-h-11 items-center gap-2 self-start text-sm text-muted hover:text-accent" href={homeHref(`#${site.hero.id}`)}>{site.ui.backToTop}<Icon name="arrow" class="size-4 -rotate-90" /></a>
+    </div>
+    <div class="mt-8 flex flex-col justify-between gap-4 border-t border-border pt-6 text-xs text-muted sm:flex-row">
+      <p>© {years} {site.footer.copyright}</p>
+      <nav aria-label={site.ui.legalNavigation} class="flex flex-wrap gap-6">
+        {site.footer.links.map((item) => <a class="underline decoration-border underline-offset-4 hover:text-accent" href={homeHref(item.href)}>{item.label}</a>)}
+      </nav>
+    </div>
+  </div>
+</footer>

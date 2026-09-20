@@ -1,0 +1,25 @@
+---
+import ContactForm from '../../../src/components/ContactForm.astro';
+import { formConfig } from '../../form-config.mjs';
+import { createCsp } from '../../../src/lib/security.mjs';
+import '../../../src/styles/global.css';
+---
+<!doctype html>
+<html lang={formConfig.site.locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content={createCsp(formConfig, { meta: true })} />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{formConfig.site.title}</title>
+    <link rel="stylesheet" href="/theme.css" />
+  </head>
+  <body>
+    <main class="shell py-12">
+      <h1 class="section-heading">{formConfig.site.name}</h1>
+      <section class="mt-8 max-w-2xl">
+        <h2 class="mb-6 text-2xl">{formConfig.contact.title}</h2>
+        <ContactForm contact={formConfig.contact} />
+      </section>
+    </main>
+  </body>
+</html>

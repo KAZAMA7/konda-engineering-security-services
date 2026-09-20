@@ -1,0 +1,49 @@
+---
+import { site } from '../lib/config.mjs';
+import Icon from './Icon.astro';
+
+interface Props {
+  contact?: typeof site.contact;
+}
+
+const { contact = site.contact } = Astro.props;
+const { form } = contact;
+---
+{form.endpoint ? (
+  <form action={form.endpoint} method="POST" accept-charset="UTF-8" class="rounded-card border border-border bg-surface p-6 sm:p-8" aria-labelledby="contact-form-heading">
+    <h3 id="contact-form-heading" class="text-xl font-semibold tracking-tight">{form.title}</h3>
+    <p class="mt-2 text-sm leading-relaxed text-muted">{form.intro}</p>
+    <div class="mt-7 grid gap-5 sm:grid-cols-2">
+      <div>
+        <label for="enquiry-name" class="field-label">{form.fields.name.label}<span class="text-accent" aria-hidden="true"> *</span><span class="sr-only"> ({site.ui.requiredLabel})</span></label>
+        <input id="enquiry-name" name="name" type="text" autocomplete="name" placeholder={form.fields.name.placeholder} required maxlength="120" />
+      </div>
+      <div>
+        <label for="enquiry-email" class="field-label">{form.fields.email.label}<span class="text-accent" aria-hidden="true"> *</span><span class="sr-only"> ({site.ui.requiredLabel})</span></label>
+        <input id="enquiry-email" name="email" type="email" autocomplete="email" placeholder={form.fields.email.placeholder} required maxlength="254" />
+      </div>
+      <div class="sm:col-span-2">
+        <label for="enquiry-company" class="field-label">{form.fields.company.label}</label>
+        <input id="enquiry-company" name="company" type="text" autocomplete="organization" placeholder={form.fields.company.placeholder} maxlength="160" />
+      </div>
+      <div class="sm:col-span-2">
+        <label for="enquiry-message" class="field-label">{form.fields.message.label}<span class="text-accent" aria-hidden="true"> *</span><span class="sr-only"> ({site.ui.requiredLabel})</span></label>
+        <textarea id="enquiry-message" name="message" rows="5" placeholder={form.fields.message.placeholder} aria-describedby="enquiry-note" required minlength="20" maxlength="5000"></textarea>
+      </div>
+    </div>
+    <div class="hidden" aria-hidden="true">
+      <label>{form.honeypotLabel}<input name="_gotcha" tabindex="-1" autocomplete="off" /></label>
+    </div>
+    <input type="hidden" name="_subject" value={form.subject} />
+    <p id="enquiry-note" class="mt-5 text-xs leading-relaxed text-muted">{contact.safetyNote}</p>
+    <p class="mt-3 text-xs leading-relaxed text-muted">{form.externalNotice} {form.providerName}. {form.privacyPrefix} <a class="text-accent underline underline-offset-4" href={site.routes.privacy}>{form.privacyLabel}</a>.</p>
+    <button class="button button-primary mt-6 w-full" type="submit">{form.submitLabel}<Icon name="arrow" class="size-5" /></button>
+  </form>
+) : (
+  <div class="flex h-full flex-col justify-center rounded-card border border-border bg-surface p-8 sm:p-10">
+    <Icon name="compass" class="size-10 text-accent" />
+    <h3 class="mt-6 text-2xl font-medium tracking-tight">{contact.unavailableTitle}</h3>
+    {contact.email ? <a class="mt-4 break-all text-lg text-accent underline underline-offset-4" href={`mailto:${contact.email}`}>{contact.email}</a> : <p class="mt-4 leading-relaxed text-muted">{contact.unavailableDescription}</p>}
+    <p class="mt-8 border-t border-border pt-5 text-xs leading-relaxed text-muted">{contact.safetyNote}</p>
+  </div>
+)}
