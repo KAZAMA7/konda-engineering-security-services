@@ -23,7 +23,7 @@
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.63.0",
     "@tailwindcss/vite": "4.3.3",
-    "@types/node": "^24.13.6",
+    "@types/node": "^26.6.1",
     "astro": "7.3.3",
     "linkedom": "0.18.13",
     "tailwindcss": "4.3.3",
