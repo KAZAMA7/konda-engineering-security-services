@@ -1,0 +1,37 @@
+---
+import type { GetStaticPaths } from 'astro';
+import MainLayout from '../layouts/MainLayout.astro';
+import Icon from '../components/Icon.astro';
+import { site } from '../lib/config.mjs';
+
+export const getStaticPaths = (() => [
+  { params: { page: site.routes.privacy.slice(1, -5) }, props: { kind: 'privacy' as const } },
+  { params: { page: site.routes.notFound.slice(1, -5) }, props: { kind: 'notFound' as const } },
+]) satisfies GetStaticPaths;
+
+interface Props {
+  kind: 'privacy' | 'notFound';
+}
+
+const { kind } = Astro.props;
+const content = site[kind];
+---
+<MainLayout title={`${content.eyebrow} | ${site.site.name}`} description={kind === 'privacy' ? site.privacy.intro : site.notFound.description} path={site.routes[kind]} noindex={kind === 'notFound'}>
+  <section class="section-space">
+    <div class="shell">
+      <div class="max-w-3xl">
+        <p class="eyebrow">{content.eyebrow}</p>
+        <h1 class="section-heading mt-5">{content.title}</h1>
+        {kind === 'privacy' ? (
+          <>
+            <p class="mt-7 text-lg leading-relaxed text-muted">{site.privacy.intro}</p>
+            <div class="mt-12 space-y-9">
+              {site.privacy.sections.map((section) => <section class="border-t border-border pt-7"><h2 class="text-xl font-semibold">{section.title}</h2><div class="mt-4 space-y-4 leading-relaxed text-muted">{section.paragraphs.map((paragraph) => <p>{paragraph}</p>)}</div></section>)}
+            </div>
+          </>
+        ) : <p class="mt-7 text-lg leading-relaxed text-muted">{site.notFound.description}</p>}
+        <a class="button button-primary mt-10" href={site.routes.home}>{content.backLabel}<Icon name="arrow" class="size-5" /></a>
+      </div>
+    </div>
+  </section>
+</MainLayout>

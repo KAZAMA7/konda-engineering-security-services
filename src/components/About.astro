@@ -1,0 +1,36 @@
+---
+import { site } from '../lib/config.mjs';
+import Icon from './Icon.astro';
+const { about } = site;
+---
+<section id={about.id} class="section-space" aria-labelledby={`${about.id}-heading`}>
+  <div class="shell grid items-start gap-12 lg:grid-cols-2 lg:gap-20">
+    <div>
+      <p class="eyebrow">{about.eyebrow}</p>
+      <h2 id={`${about.id}-heading`} class="section-heading mt-4">{about.title}</h2>
+      <div class="mt-7 space-y-5 leading-relaxed text-muted">
+        {about.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+      </div>
+    </div>
+    <div class="rounded-card border border-border bg-surface p-6 sm:p-8">
+      <div class="flex items-center gap-3 border-b border-border pb-6">
+        <Icon name="shield" class="size-6 text-accent" />
+        <h3 class="text-sm font-medium">{about.credentialsLabel}</h3>
+      </div>
+      <dl class="divide-y divide-border">
+        {about.credentials.map((credential) => (
+          <div class="flex flex-wrap items-center justify-between gap-3 py-6">
+            <dt class="font-mono text-2xl font-medium tracking-tight text-accent">{credential.name}</dt>
+            <dd class="text-sm text-muted">{credential.detail}</dd>
+          </div>
+        ))}
+      </dl>
+      <div class="mt-3 rounded-button border border-border bg-canvas p-5">
+        <p class="text-xs text-muted">{about.regionLabel}</p>
+        <ul class="mt-3 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium">
+          {about.regions.map((region) => <li class="flex items-center gap-2"><span class="size-1.5 rounded-full bg-secondary" aria-hidden="true"></span>{region}</li>)}
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>

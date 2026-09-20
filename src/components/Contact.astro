@@ -1,0 +1,19 @@
+---
+import { site } from '../lib/config.mjs';
+import ContactForm from './ContactForm.astro';
+const { contact } = site;
+---
+<section id={contact.id} class="section-space border-t border-border bg-elevated/40" aria-labelledby={`${contact.id}-heading`}>
+  <div class="shell grid gap-12 lg:grid-cols-2 lg:gap-20">
+    <div>
+      <p class="eyebrow">{contact.eyebrow}</p>
+      <h2 id={`${contact.id}-heading`} class="section-heading mt-4">{contact.title}</h2>
+      <p class="mt-6 max-w-lg leading-relaxed text-muted">{contact.intro}</p>
+      {(contact.email || contact.phone) && <dl class="mt-8 space-y-4 text-sm">
+        {contact.email && <div><dt class="text-muted">{site.ui.emailLabel}</dt><dd class="mt-1"><a class="break-all text-accent underline underline-offset-4" href={`mailto:${contact.email}`}>{contact.email}</a></dd></div>}
+        {contact.phone && <div><dt class="text-muted">{site.ui.phoneLabel}</dt><dd class="mt-1"><a class="text-accent underline underline-offset-4" href={`tel:${contact.phone.replace(/[ ()-]/g, '')}`}>{contact.phone}</a></dd></div>}
+      </dl>}
+    </div>
+    <ContactForm />
+  </div>
+</section>

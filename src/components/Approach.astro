@@ -1,0 +1,24 @@
+---
+import { site } from '../lib/config.mjs';
+const { approach } = site;
+---
+<section id={approach.id} class="section-space border-y border-border bg-surface/50" aria-labelledby={`${approach.id}-heading`}>
+  <div class="shell">
+    <div class="section-intro">
+      <div>
+        <p class="eyebrow">{approach.eyebrow}</p>
+        <h2 id={`${approach.id}-heading`} class="section-heading mt-4">{approach.title}</h2>
+      </div>
+      <p class="max-w-lg leading-relaxed text-muted">{approach.intro}</p>
+    </div>
+    <ol class="mt-14 grid gap-9 md:grid-cols-3">
+      {approach.steps.map((step, index) => (
+        <li class="border-t border-border pt-6">
+          <span class="font-mono text-sm text-accent" aria-hidden="true">{String(index + 1).padStart(2, '0')} /</span>
+          <h3 class="mt-5 text-2xl font-medium tracking-tight">{step.title}</h3>
+          <p class="mt-3 text-sm leading-7 text-muted">{step.description}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>

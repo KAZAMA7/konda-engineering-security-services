@@ -1,0 +1,45 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { site } from '../lib/config.mjs';
+import { createCsp } from '../lib/security.mjs';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  path?: string;
+  noindex?: boolean;
+}
+
+const { title = site.site.title, description = site.site.description, path = site.routes.home, noindex = false } = Astro.props;
+const canonical = new URL(path, site.site.url).href;
+---
+<!doctype html>
+<html lang={site.site.locale}>
+  <head>
+    <meta charset="UTF-8" />
+    {import.meta.env.PROD && <meta http-equiv="Content-Security-Policy" content={createCsp(site, { meta: true })} />}
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content={noindex || !site.site.indexable ? 'noindex, nofollow' : 'index, follow'} />
+    <meta name="theme-color" content={site.theme.colors.canvas} />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/theme.css" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.site.name} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">{site.ui.skipLink}</a>
+    <Header />
+    <main id="main-content" tabindex="-1"><slot /></main>
+    <Footer />
+  </body>
+</html>

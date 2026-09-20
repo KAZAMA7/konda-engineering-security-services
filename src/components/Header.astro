@@ -1,0 +1,27 @@
+---
+import { homeHref, site } from '../lib/config.mjs';
+import Icon from './Icon.astro';
+---
+<header class="site-header relative top-0 z-50 border-b border-border bg-canvas/95 lg:sticky">
+  <div class="shell flex min-h-24 items-center justify-between gap-4">
+    <a class="flex min-w-0 items-center gap-3" href={site.routes.home} aria-label={site.ui.homeLabel}>
+      <span class="grid size-11 shrink-0 place-items-center rounded-button border border-accent/50 bg-accent/10 font-mono text-sm font-semibold text-accent">{site.site.monogram}</span>
+      <span class="min-w-0">
+        <span class="block text-sm font-semibold leading-snug tracking-tight sm:text-base lg:text-lg">{site.site.name}</span>
+        <span class="hidden text-xs tracking-wide text-muted sm:block">{site.header.descriptor}</span>
+      </span>
+    </a>
+    <nav aria-label={site.ui.mainNavigation} class="hidden shrink-0 items-center gap-8 whitespace-nowrap lg:flex">
+      {site.navigation.map((item) => <a class="nav-link" href={homeHref(item.href)}>{item.label}</a>)}
+      <a class="button button-outline text-sm" href={homeHref(site.header.contactCta.href)}>{site.header.contactCta.label}<Icon name="arrow" class="size-4" /></a>
+    </nav>
+    <details class="mobile-menu shrink-0 lg:hidden">
+      <summary class="flex min-h-11 cursor-pointer items-center gap-2 rounded-button border border-border px-3 text-sm">
+        {site.ui.menuLabel}<Icon name="layers" class="size-4" />
+      </summary>
+      <nav aria-label={site.ui.mobileNavigation} class="absolute inset-x-0 top-full grid gap-1 border-b border-border bg-surface px-6 py-4 shadow-xl">
+        {[...site.navigation, site.header.contactCta].map((item) => <a class="nav-link rounded-button px-3 py-3" href={homeHref(item.href)}>{item.label}</a>)}
+      </nav>
+    </details>
+  </div>
+</header>
