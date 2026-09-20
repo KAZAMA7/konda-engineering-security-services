@@ -9,6 +9,7 @@ const copy = () => structuredClone(fixture);
 test('the central configuration contains all five required services and leadership credentials', () => {
   const config = parseSiteConfig(copy());
   assert.equal(config.site.name, 'Konda Engineering and security services');
+  assert.equal(config.site.url, 'https://konda.com');
   assert.equal(config.ui.homeLabel, `${config.site.name} home`);
   assert.ok(config.site.title.startsWith(config.site.name));
   assert.ok(config.about.paragraphs[0].includes(config.site.name));
@@ -17,14 +18,93 @@ test('the central configuration contains all five required services and leadersh
     'DevSecOps', 'Security Architecture', 'Governance, Risk, & Compliance (GRC)', 'Pentesting', 'Platform Engineering',
   ]);
   assert.deepEqual(config.about.credentials.map(({ name }) => name), ['CISSP', 'SABSA', 'RHCA']);
-  assert.deepEqual(config.about.regions, ['India', 'United Arab Emirates']);
+  assert.deepEqual(config.about.regions, ['Netherlands', 'United Arab Emirates']);
+  assert.equal(config.site.locale, 'en-NL');
+  assert.equal(config.contact.phone, '+31 626798365');
+  assert.doesNotMatch(JSON.stringify(config), /\bIndia\b|en-IN/i);
   assert.ok(config.services.items[0].description.startsWith('Accelerate delivery without compromising safety.'));
+});
+
+test('the default contact details include the Arnhem address and WhatsApp number', () => {
+  const config = parseSiteConfig(copy());
+  assert.equal(config.contact.address, 'Charles Dickensstraat 35, Rijkerswoerd, Arnhem 6836 TR');
+  assert.equal(config.contact.whatsappUrl, 'https://wa.me/31626798365');
+  assert.equal(config.contact.whatsappUrl, `https://wa.me/${config.contact.phone.replace(/\D/g, '')}`);
+});
+
+test('the address and WhatsApp link can be changed or disabled in configuration', () => {
+  const config = copy();
+  config.contact.address = '  Nieuwegracht 1, Utrecht  ';
+  config.contact.whatsappUrl = 'https://wa.me/441234567890';
+  const parsed = parseSiteConfig(config);
+  assert.equal(parsed.contact.address, 'Nieuwegracht 1, Utrecht');
+  assert.equal(parsed.contact.whatsappUrl, config.contact.whatsappUrl);
+  config.contact.address = '';
+  config.contact.whatsappUrl = '';
+  assert.equal(parseSiteConfig(config).contact.address, '');
+  assert.equal(parseSiteConfig(config).contact.whatsappUrl, '');
+  config.contact.address = 'a'.repeat(501);
+  assert.throws(() => parseSiteConfig(config), /contact.address/);
+});
+
+test('WhatsApp links require the HTTPS click-to-chat host and an international number', () => {
+  for (const whatsappUrl of [
+    'javascript:alert(1)', 'http://wa.me/31626798365', '//wa.me/31626798365',
+    'https://attacker.test/31626798365', 'https://wa.me.attacker.test/31626798365', 'https://wa.me@attacker.test/31626798365',
+    'https://wa.me/+31626798365', 'https://wa.me/31 626798365', 'https://wa.me/031626798365',
+    'https://wa.me/123456', 'https://wa.me/1234567890123456', 'https://wa.me/not-a-number',
+    'https://wa.me/31626798365?redirect=elsewhere', 'https://wa.me/31626798365#fragment',
+  ]) {
+    const config = copy();
+    config.contact.whatsappUrl = whatsappUrl;
+    assert.throws(() => parseSiteConfig(config), /contact.whatsappUrl/, whatsappUrl);
+  }
+});
+
+test('phone numbers require a country code and seven to fifteen digits', () => {
+  for (const phone of ['31626798365', '+------', '+      ', '+0000000', '+123456', '+1234567890123456', 'javascript:alert(1)']) {
+    const config = copy();
+    config.contact.phone = phone;
+    assert.throws(() => parseSiteConfig(config), /contact.phone/, phone);
+  }
+});
+
+test('each capability has a distinct static page with its own scope and outcomes', () => {
+  const config = parseSiteConfig(copy());
+  assert.deepEqual(config.services.items.map(({ href }) => href), [
+    '/devsecops.html', '/security-architecture.html', '/grc.html', '/pentesting.html', '/platform-engineering.html',
+  ]);
+  for (const service of config.services.items) {
+    assert.ok(service.scope.length > 0);
+    assert.ok(service.outcomes.length > 0);
+  }
 });
 
 test('new services can be added without editing a component', () => {
   const config = copy();
-  config.services.items.push({ ...config.services.items[0], id: 'new-capability', title: 'New capability' });
+  config.services.items.push({ ...config.services.items[0], id: 'new-capability', href: '/new-capability.html', title: 'New capability' });
   assert.equal(parseSiteConfig(config).services.items.length, 6);
+});
+
+test('capability routes reject unsafe URLs and collisions with existing pages', () => {
+  for (const href of ['/index.html', '/nested/page.html', '/../escape.html', '/devsecops', '/devsecops.html#scope', '/devsecops.html?query=1', '//attacker.test', 'https://attacker.test/page.html', 'javascript:alert(1)']) {
+    const config = copy();
+    config.services.items[0].href = href;
+    assert.throws(() => parseSiteConfig(config), /Invalid site configuration/, href);
+  }
+  for (const href of ['/privacy.html', '/404.html', '/security-architecture.html']) {
+    const config = copy();
+    config.services.items[0].href = href;
+    assert.throws(() => parseSiteConfig(config), /unique/, href);
+  }
+});
+
+test('capability pages cannot have empty scope or outcome content', () => {
+  for (const field of ['scope', 'outcomes']) {
+    const config = copy();
+    config.services.items[0][field] = [];
+    assert.throws(() => parseSiteConfig(config), /Invalid site configuration/);
+  }
 });
 
 test('unknown fields and duplicate section or service identifiers fail closed', () => {
@@ -37,6 +117,11 @@ test('unknown fields and duplicate section or service identifiers fail closed', 
   const section = copy();
   section.about.id = section.contact.id;
   assert.throws(() => parseSiteConfig(section), /unique/);
+  for (const id of ['capability-scope', 'capability-outcomes', 'capability-related']) {
+    const config = copy();
+    config.contact.id = id;
+    assert.throws(() => parseSiteConfig(config), /unique/);
+  }
 });
 
 test('navigation and routes must point to real local pages or sections', () => {
@@ -48,6 +133,12 @@ test('navigation and routes must point to real local pages or sections', () => {
   const collision = copy();
   collision.routes.privacy = collision.routes.notFound;
   assert.throws(() => parseSiteConfig(collision), /unique/);
+});
+
+test('navigation can link directly to configured capability pages', () => {
+  const config = copy();
+  config.navigation[0].href = '/devsecops.html';
+  assert.equal(parseSiteConfig(config).navigation[0].href, '/devsecops.html');
 });
 
 test('theme tokens reject CSS injection', () => {
@@ -92,9 +183,12 @@ test('malformed canonical URLs and same-origin form handlers are rejected clearl
 });
 
 test('production validation refuses starter placeholders and missing contact channels', () => {
-  assert.throws(() => validateProductionConfig(parseSiteConfig(copy())), /canonical/);
   const config = copy();
+  config.site.url = 'https://example.com';
+  assert.throws(() => validateProductionConfig(parseSiteConfig(config)), /canonical/);
   config.site.url = 'https://security.consulting';
+  config.contact.phone = '';
+  config.contact.whatsappUrl = '';
   assert.throws(() => validateProductionConfig(parseSiteConfig(config)), /contact/);
   config.contact.email = 'hello@example.com';
   assert.throws(() => validateProductionConfig(parseSiteConfig(config)), /placeholder/);
@@ -105,9 +199,23 @@ test('production validation refuses starter placeholders and missing contact cha
 test('production permits a configured webhook without publishing an email address', () => {
   const config = copy();
   config.site.url = 'https://security.consulting';
+  config.contact.phone = '';
+  config.contact.whatsappUrl = '';
   config.contact.form.endpoint = 'https://formspree.io/f/abc123';
   config.contact.form.providerName = 'Formspree';
   assert.doesNotThrow(() => validateProductionConfig(parseSiteConfig(config)));
   config.contact.form.endpoint = 'https://formspree.io/f/REPLACE_ME';
+  assert.throws(() => validateProductionConfig(parseSiteConfig(config)), /placeholder/);
+});
+
+test('production permits the configured domain with phone or WhatsApp contact', () => {
+  const config = copy();
+  assert.doesNotThrow(() => validateProductionConfig(parseSiteConfig(config)));
+  config.contact.whatsappUrl = '';
+  assert.doesNotThrow(() => validateProductionConfig(parseSiteConfig(config)));
+  config.contact.phone = '';
+  config.contact.whatsappUrl = 'https://wa.me/31626798365';
+  assert.doesNotThrow(() => validateProductionConfig(parseSiteConfig(config)));
+  config.contact.email = 'hello@example.com';
   assert.throws(() => validateProductionConfig(parseSiteConfig(config)), /placeholder/);
 });

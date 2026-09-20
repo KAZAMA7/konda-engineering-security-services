@@ -10,7 +10,7 @@ This deploys only static HTML, CSS and assets. There is no application server, L
 - The build must generate `.deploy/csp.txt` and `.deploy/response-headers-policy.json`. The JSON is the **CloudFront API** `ResponseHeadersPolicyConfig` shape **without `Name`**, with `SecurityHeadersConfig`, `CustomHeadersConfig.Quantity`, `CustomHeadersConfig.Items`, and optional `Comment`. The current generator supplies three custom headers; all are deployed, not just `Permissions-Policy`.
 - The generated CSP must match `csp.txt`, fit CloudFront's default 1,783-character limit, and contain neither `unsafe-inline` nor `unsafe-eval`. The workflow checks mandatory security headers and preserves the existing AWS policy's name.
 - Browser fixtures in `.test-build` are not deployable artifacts. Only `dist/` and `.deploy/` are uploaded; the hidden `.deploy` directory is explicitly included. Never put credentials or private data in either directory. `dist/_headers` is for other hosts and is excluded from every S3 upload.
-- Before a production build, configure `site.config.json` with the real canonical HTTPS URL and at least a real email address or external HTTPS form endpoint. `npm run validate:production` must pass; CI will not bypass it.
+- Before a production build, verify the configured canonical HTTPS URL and at least one real phone, WhatsApp, email, or external HTTPS form contact channel in `site.config.json`. `npm run validate:production` must pass; CI will not bypass it. Syntax validation does not establish domain ownership or contact reachability.
 
 ## Bootstrap the infrastructure
 
@@ -150,6 +150,8 @@ The role cannot delete objects/versions, read site objects directly, set ACLs, a
 
 ### Production environment variables
 
+This is the optional **static S3/CloudFront** deployment, not the container workflow. Enable it only by setting the **repository** variable `ENABLE_AWS_STATIC_DEPLOY=true`; leave it unset for container-only hosting. For Fargate, Azure, or GCP container deployments, follow the [README runbook](../README.md#deploy-containers-to-aws-azure-or-gcp) and its `container-*` environments instead.
+
 Add the following under repository settings → Environments → `production` → Environment variables. These are configuration values, not static AWS secrets.
 
 | Variable | Value |
@@ -164,7 +166,7 @@ The ARN outputs are provided for the IAM permission policy. `CloudFrontDomainNam
 
 ## CI and release behavior
 
-`.github/workflows/deploy.yml` runs on pushes to `main`, pull requests, and manual dispatch. The build job has only repository-read permissions and never assumes an AWS role. It installs with `npm ci`, checks types, runs unit/security tests, validates production configuration for main releases, builds, installs Playwright Chromium with its OS dependencies, runs browser tests, and checks the AWS artifact contract. All action references are pinned to upstream-verified commit SHAs; the annotated AWS credentials tag was resolved to its underlying commit. These actions require a runner supporting Node 24 and target GitHub.com, not older GHES runners.
+`.github/workflows/deploy.yml` runs validation on pushes to `main`, pull requests, and manual dispatch. Production validation, artifact publication, and deployment require repository variable `ENABLE_AWS_STATIC_DEPLOY=true` as well as a main/non-PR run. The build job has only repository-read permissions and never assumes an AWS role. It installs with `npm ci`, checks types, runs unit/security tests, builds, installs Playwright Chromium with its OS dependencies, runs browser tests, and checks the AWS artifact contract. All action references are pinned to upstream-verified commit SHAs; the annotated AWS credentials tag was resolved to its underlying commit. These actions require a runner supporting Node 24 and target GitHub.com, not older GHES runners.
 
 Only a successful main/non-PR build can reach the separate environment-gated deployment job. Only that job has `id-token: write`; it downloads the artifact from the same workflow run and does not check out or execute npm dependencies with AWS credentials. PR validation can be superseded, but an active production deployment is not cancelled by a newer push. Production deployments are serialized.
 

@@ -11,7 +11,7 @@ const years = year > site.footer.copyrightStartYear ? `${site.footer.copyrightSt
         <a href={site.routes.home} class="text-lg font-semibold tracking-tight">{site.site.name}</a>
         <p class="mt-2 text-sm text-muted">{site.footer.tagline}</p>
       </div>
-      <a class="inline-flex min-h-11 items-center gap-2 self-start text-sm text-muted hover:text-accent" href={homeHref(`#${site.hero.id}`)}>{site.ui.backToTop}<Icon name="arrow" class="size-4 -rotate-90" /></a>
+      <a class="inline-flex min-h-11 items-center gap-2 self-start text-sm text-muted hover:text-accent" href="#main-content">{site.ui.backToTop}<Icon name="arrow" class="size-4 -rotate-90" /></a>
     </div>
     <div class="mt-8 flex flex-col justify-between gap-4 border-t border-border pt-6 text-xs text-muted sm:flex-row">
       <p>© {years} {site.footer.copyright}</p>

@@ -15,12 +15,14 @@ for (const name of await readdir(root, { recursive: true })) {
   if (name.endsWith('.html')) documents.set(`/${name}`, parseHTML(await readFile(new URL(name, root), 'utf8')).document);
 }
 
-assert.equal(documents.size, 3, 'Only the homepage, privacy page and 404 page should be generated');
-for (const route of Object.values(site.routes)) assert.ok(documents.has(route === '/' ? '/index.html' : route), `Missing static route ${route}`);
+const routes = [...Object.values(site.routes), ...site.services.items.map((service) => service.href)];
+assert.equal(documents.size, routes.length, 'Generate exactly the configured pages, including every capability');
+for (const route of routes) assert.ok(documents.has(route === '/' ? '/index.html' : route), `Missing static route ${route}`);
 
 for (const [path, document] of documents) {
   assert.equal(document.querySelectorAll('h1').length, 1, `${path}: require one main heading`);
   assert.equal(document.documentElement.lang, site.site.locale);
+  assert.equal(document.querySelector('link[rel="canonical"]')?.getAttribute('href'), new URL(path === '/index.html' ? '/' : path, site.site.url).href);
   assert.equal(document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute('content'), createCsp(site, { meta: true }));
   assert.equal(document.querySelectorAll('script, style, iframe, object, embed, [style], base').length, 0, `${path}: scripts, inline styles and embedded content are forbidden`);
   const ids = [...document.querySelectorAll('[id]')].map((element) => element.id);
@@ -39,6 +41,10 @@ for (const [path, document] of documents) {
   for (const link of document.querySelectorAll('a[href]')) {
     const href = link.getAttribute('href');
     if (/^(mailto:|tel:)/.test(href)) continue;
+    if (site.contact.whatsappUrl && href === site.contact.whatsappUrl) {
+      assert.ok(link.getAttribute('rel')?.split(/\s+/).includes('noreferrer'), `${path}: WhatsApp links must not send a referrer`);
+      continue;
+    }
     const target = new URL(href, new URL(path === '/index.html' ? '/' : path, site.site.url));
     assert.equal(target.origin, new URL(site.site.url).origin, `${path}: unexpected external link`);
     const targetDocument = documents.get(target.pathname === '/' ? '/index.html' : target.pathname);
@@ -53,15 +59,42 @@ for (const service of site.services.items) {
   const card = home.getElementById(service.id);
   assert.equal(card.querySelector('h3')?.textContent, service.title);
   assert.equal(card.querySelector('p')?.textContent, service.description, 'Service payload must be preserved verbatim');
+  assert.equal(card.querySelector('a[aria-label]')?.getAttribute('href'), service.href);
+  const page = documents.get(service.href);
+  assert.equal(page.querySelector('h1')?.textContent, service.title);
+  assert.equal(page.title, `${service.title} | ${site.site.name}`);
+  assert.equal(page.querySelector('meta[name="description"]')?.getAttribute('content'), service.description);
+  assert.deepEqual([...page.querySelectorAll('[data-capability-scope] h3')].map((heading) => heading.textContent), service.scope.map((item) => item.title));
+  assert.deepEqual([...page.querySelectorAll('[data-capability-scope] p')].map((paragraph) => paragraph.textContent), service.scope.map((item) => item.description));
+  assert.deepEqual([...page.querySelectorAll('[data-capability-outcomes] li')].map((item) => item.textContent), service.outcomes);
 }
 
-const forms = [...home.querySelectorAll('form')];
-assert.equal(forms.length, site.contact.form.endpoint ? 1 : 0, 'Never render a dead or unconfigured form');
-if (forms.length) {
-  assert.equal(forms[0].getAttribute('action'), site.contact.form.endpoint);
-  assert.equal(forms[0].getAttribute('method').toLowerCase(), 'post');
-  for (const name of ['name', 'email', 'message']) assert.ok(forms[0].querySelector(`[name="${name}"][required]`));
+for (const page of [home, ...site.services.items.map((service) => documents.get(service.href))]) {
+  const contact = page.getElementById(site.contact.id);
+  if (site.contact.phone) {
+    assert.equal(contact.querySelector('a[href^="tel:"]')?.getAttribute('href'), `tel:${site.contact.phone.replace(/[ ()-]/g, '')}`);
+    assert.equal(contact.querySelector('a[href^="tel:"]')?.textContent, site.contact.phone);
+  }
+  assert.equal(contact.querySelectorAll('address').length, site.contact.address ? 1 : 0);
+  if (site.contact.address) assert.equal(contact.querySelector('address').textContent, site.contact.address);
+  if (site.contact.whatsappUrl) {
+    assert.equal(contact.querySelector(`a[href="${site.contact.whatsappUrl}"]`)?.textContent, site.ui.whatsappCtaLabel);
+  } else {
+    assert.equal(contact.querySelectorAll('a[href^="https://wa.me/"]').length, 0);
+  }
+  if (site.contact.phone || site.contact.email || site.contact.whatsappUrl || site.contact.form.endpoint) assert.ok(!contact.textContent.includes(site.contact.unavailableDescription));
+  const forms = [...page.querySelectorAll('form')];
+  assert.equal(forms.length, site.contact.form.endpoint ? 1 : 0, 'Never render a dead or unconfigured form');
+  if (forms.length) {
+    assert.equal(forms[0].getAttribute('action'), site.contact.form.endpoint);
+    assert.equal(forms[0].getAttribute('method').toLowerCase(), 'post');
+    for (const name of ['name', 'email', 'message']) assert.ok(forms[0].querySelector(`[name="${name}"][required]`));
+  }
 }
+
+const sitemap = await readFile(new URL('sitemap.xml', root), 'utf8');
+const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+assert.deepEqual(sitemapUrls.sort(), routes.filter((route) => route !== site.routes.notFound).map((route) => new URL(route, site.site.url).href).sort());
 
 const hostHeaders = await readFile(new URL('_headers', root), 'utf8');
 for (const [name, value] of Object.entries(createSecurityHeaders(site))) assert.ok(hostHeaders.includes(`  ${name}: ${value}\n`), `Missing header ${name}`);

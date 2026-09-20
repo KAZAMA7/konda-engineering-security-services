@@ -12,5 +12,6 @@ playwright-report/
 test-results/
 .env
 .env.*
+gha-creds-*.json
 .DS_Store
 .output.txt

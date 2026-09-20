@@ -7,7 +7,7 @@ const deployDir = new URL('../.deploy/', import.meta.url);
 await Promise.all([mkdir(publicDir, { recursive: true }), mkdir(deployDir, { recursive: true })]);
 const headers = createSecurityHeaders(site);
 const escapeXml = (value) => value.replace(/[<>&"']/g, (character) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[character]);
-const urls = [site.routes.home, site.routes.privacy].map((route) => new URL(route, site.site.url).href);
+const urls = [site.routes.home, site.routes.privacy, ...site.services.items.map((service) => service.href)].map((route) => new URL(route, site.site.url).href);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((url) => `<url><loc>${escapeXml(url)}</loc></url>`).join('')}</urlset>\n`;
 const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="${site.theme.colors.canvas}"/><path d="M32 10 49 17v14c0 12-8 20-17 25-9-5-17-13-17-25V17Z" fill="none" stroke="${site.theme.colors.accent}" stroke-width="4"/><path d="m24 32 6 6 12-13" fill="none" stroke="${site.theme.colors.accent}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>\n`;
 
