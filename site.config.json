@@ -3,10 +3,10 @@
   "site": {
     "name": "Konda Engineering and security services",
     "monogram": "KES",
-    "url": "https://example.com",
-    "locale": "en-IN",
+    "url": "https://konda.com",
+    "locale": "en-NL",
     "title": "Konda Engineering and security services | Security, engineered for what comes next",
-    "description": "Expert-led Security Architecture, Pentesting, DevSecOps, GRC and Platform Engineering services, with a strategic focus on India and the UAE.",
+    "description": "Expert-led Security Architecture, Pentesting, DevSecOps, GRC and Platform Engineering services, with a strategic focus on the Netherlands and the UAE.",
     "indexable": false
   },
   "routes": {
@@ -45,6 +45,9 @@
     "legalNavigation": "Legal navigation",
     "emailLabel": "Email",
     "phoneLabel": "Phone",
+    "whatsappLabel": "WhatsApp",
+    "whatsappCtaLabel": "Send a WhatsApp message",
+    "addressLabel": "Address",
     "requiredLabel": "Required",
     "backToTop": "Back to top"
   },
@@ -65,7 +68,7 @@
     "description": "Move forward with confidence. We bring architectural depth and hands-on engineering to your most important cloud and cybersecurity challenges.",
     "primaryCta": { "label": "Explore our expertise", "href": "#expertise" },
     "secondaryCta": { "label": "Discuss your priorities", "href": "#contact" },
-    "signals": ["Expert-led engagements", "Cloud-agnostic thinking", "India & UAE focus"],
+    "signals": ["Expert-led engagements", "Cloud-agnostic thinking", "Netherlands & UAE focus"],
     "visual": {
       "eyebrow": "The resilience blueprint",
       "title": "Security is a system.",
@@ -84,42 +87,104 @@
     "title": "Deep expertise.\nPractical outcomes.",
     "intro": "From the first architectural decision to the next production release, we connect security strategy to the engineering that makes it real.",
     "capabilityLabel": "Capability",
-    "ctaLabel": "Discuss this capability",
+    "ctaLabel": "Explore this capability",
+    "page": {
+      "backLabel": "All capabilities",
+      "scopeTitle": "How we can help",
+      "outcomesTitle": "What you can expect",
+      "contactCtaLabel": "Discuss this capability",
+      "relatedTitle": "Explore our other capabilities"
+    },
     "items": [
       {
         "id": "devsecops-cloud",
+        "href": "/devsecops.html",
         "icon": "terminal",
         "title": "DevSecOps",
         "description": "Accelerate delivery without compromising safety. We embed robust security controls directly into your CI/CD pipelines, shifting security left to catch vulnerabilities before they reach production. We build resilient architectures that scale across complex cloud workloads.",
-        "tags": ["Secure CI/CD", "Cloud foundations", "Platform resilience"]
+        "tags": ["Secure CI/CD", "Cloud foundations", "Platform resilience"],
+        "scope": [
+          { "title": "Secure delivery pipelines", "description": "Embed source, dependency, container, and infrastructure checks into your delivery workflow. Set risk-based release gates and give engineers actionable findings where they already work." },
+          { "title": "Cloud and infrastructure guardrails", "description": "Build repeatable cloud foundations with infrastructure as code, least-privilege access, and deliberate secrets management. Review configuration drift and control coverage across environments." },
+          { "title": "Engineering enablement", "description": "Work with platform, security, and development teams to adopt the controls. Document ownership, exception handling, and operating practices so secure delivery remains sustainable." }
+        ],
+        "outcomes": [
+          "A delivery-security assessment and prioritized engineering backlog.",
+          "Reusable pipeline controls aligned with your tooling and risk appetite.",
+          "A practical rollout and handover plan for your engineering teams."
+        ]
       },
       {
         "id": "security-architecture",
+        "href": "/security-architecture.html",
         "icon": "layers",
         "title": "Security Architecture",
         "description": "Transform security from a reactive barrier into a strategic enabler. We design enterprise ecosystems specializing in Zero Trust, robust identity management, and advanced endpoint protection across hybrid and multi-cloud environments.",
-        "tags": ["Zero Trust", "Identity & access", "Hybrid & multi-cloud"]
+        "tags": ["Zero Trust", "Identity & access", "Hybrid & multi-cloud"],
+        "scope": [
+          { "title": "Business context and threat modeling", "description": "Map critical services, information flows, and trust boundaries. Assess architectural gaps and threat scenarios against business priorities before selecting controls." },
+          { "title": "Zero Trust and identity design", "description": "Design identity, privileged access, segmentation, and endpoint controls around explicit trust decisions. Connect policy intent to enforceable patterns across cloud and hybrid environments." },
+          { "title": "Target architecture and design assurance", "description": "Develop reference architectures and review implementation designs with your teams. Make dependencies, trade-offs, and residual risks visible to technical and executive stakeholders." }
+        ],
+        "outcomes": [
+          "A documented target architecture with clear trust boundaries and control decisions.",
+          "A prioritized gap assessment tied to business risk.",
+          "A phased implementation roadmap and reusable security design patterns."
+        ]
       },
       {
         "id": "governance-risk-compliance",
+        "href": "/grc.html",
         "icon": "compass",
         "title": "Governance, Risk, & Compliance (GRC)",
         "description": "Navigate the complex regulatory landscape with absolute confidence. We conduct comprehensive risk modeling, establish continuous compliance automation, and build resilient governance frameworks to satisfy internal stakeholders and strict global regulators.",
-        "tags": ["Risk modeling", "Compliance automation", "Governance"]
+        "tags": ["Risk modeling", "Compliance automation", "Governance"],
+        "scope": [
+          { "title": "Risk assessment and treatment", "description": "Identify material technology and security risks, establish accountable owners, and agree proportionate treatment options. Make risk decisions understandable to business leaders." },
+          { "title": "Governance and control frameworks", "description": "Translate agreed regulatory, contractual, and internal requirements into policies and control responsibilities. Connect governance to the way your teams actually design, deliver, and operate services." },
+          { "title": "Evidence and continuous assurance", "description": "Map controls to evidence sources and automate repeatable collection where practical. Improve visibility into control gaps and prepare teams for internal reviews and external assessments." }
+        ],
+        "outcomes": [
+          "A risk register and treatment roadmap with defined ownership.",
+          "A control framework mapped to your agreed obligations and business context.",
+          "An evidence collection plan and reporting approach for ongoing assurance."
+        ]
       },
       {
         "id": "offensive-security",
+        "href": "/pentesting.html",
         "icon": "target",
         "title": "Pentesting",
         "description": "Uncover your blind spots before adversaries do. We simulate sophisticated attacks against web applications, APIs, and cloud infrastructure to identify weaknesses, demonstrating business impact and providing a prioritized remediation roadmap.",
-        "tags": ["Web & API testing", "Cloud security testing", "Actionable remediation"]
+        "tags": ["Web & API testing", "Cloud security testing", "Actionable remediation"],
+        "scope": [
+          { "title": "Authorized scope and rules of engagement", "description": "Agree the systems, access, testing windows, and safety boundaries before testing begins. Establish written authorization, communication channels, and escalation procedures." },
+          { "title": "Web, API, and cloud assessments", "description": "Examine agreed targets for exploitable weaknesses in access controls, application logic, configuration, and cloud permissions. Validate findings within the approved scope and document their business impact." },
+          { "title": "Remediation and focused retesting", "description": "Explain findings to engineering and business stakeholders with clear priorities and practical remediation guidance. Validate agreed fixes through focused retesting." }
+        ],
+        "outcomes": [
+          "An executive summary of the tested exposure and its business implications.",
+          "Technical findings with supporting evidence and prioritized remediation guidance.",
+          "A remediation discussion and agreed retest scope to validate improvements."
+        ]
       },
       {
         "id": "platform-engineering",
+        "href": "/platform-engineering.html",
         "icon": "layers",
         "title": "Platform Engineering",
         "description": "Give your engineering teams a secure, reliable foundation for delivery. We design internal developer platforms, automate infrastructure as code, and create self-service workflows with built-in guardrails. From Kubernetes to cloud landing zones, we make platforms easier to operate, observe, and scale across AWS, Azure, and GCP.",
-        "tags": ["Developer platforms", "Infrastructure as code", "Kubernetes & observability"]
+        "tags": ["Developer platforms", "Infrastructure as code", "Kubernetes & observability"],
+        "scope": [
+          { "title": "Internal developer platforms", "description": "Understand developer needs and design supported paths for building and running services. Create self-service workflows that reduce repetitive work without removing security and operational guardrails." },
+          { "title": "Automated cloud foundations", "description": "Build reusable infrastructure as code, cloud landing zones, and Kubernetes foundations where appropriate. Standardize provisioning and environment management across AWS, Azure, and GCP." },
+          { "title": "Reliability and operability", "description": "Design observability, service ownership, and operational workflows into the platform. Help teams establish recovery practices and maintain the platform as a product." }
+        ],
+        "outcomes": [
+          "A platform reference architecture and adoption roadmap grounded in developer needs.",
+          "Reusable infrastructure modules and self-service delivery templates.",
+          "Observability guidance, operating runbooks, and knowledge transfer for platform owners."
+        ]
       }
     ]
   },
@@ -140,7 +205,7 @@
     "title": "Expert-led.\nEnterprise-minded.",
     "paragraphs": [
       "Founded by a seasoned Security Architect holding CISSP, SABSA, and RHCA credentials, Konda Engineering and security services brings together enterprise security thinking and the engineering discipline to put it into practice.",
-      "We help organizations make confident decisions across cloud security, architecture, and proactive risk management. Our strategic operational focus in India and the UAE connects regional understanding with enterprise-grade practices.",
+      "We help organizations make confident decisions across cloud security, architecture, and proactive risk management. Our strategic operational focus in the Netherlands and the UAE connects regional understanding with enterprise-grade practices.",
       "We believe the strongest security programs enable progress. That means independent advice, proportionate controls, and a clear line from technical decisions to business outcomes."
     ],
     "credentialsLabel": "Leadership credentials",
@@ -150,7 +215,7 @@
       { "name": "RHCA", "detail": "Engineering depth" }
     ],
     "regionLabel": "Regional focus. Global perspective.",
-    "regions": ["India", "United Arab Emirates"]
+    "regions": ["Netherlands", "United Arab Emirates"]
   },
   "contact": {
     "id": "contact",
@@ -158,7 +223,9 @@
     "title": "What are you\nbuilding towards?",
     "intro": "A stronger security posture. A more resilient platform. A clearer path forward. Tell us what matters to your business, and let's explore the right next step.",
     "email": "",
-    "phone": "",
+    "phone": "+31 626798365",
+    "whatsappUrl": "https://wa.me/31626798365",
+    "address": "Charles Dickensstraat 35, Rijkerswoerd, Arnhem 6836 TR",
     "safetyNote": "Please do not send passwords, access tokens, sensitive customer data, or details of unpatched vulnerabilities through this channel.",
     "unavailableTitle": "A conversation starts here.",
     "unavailableDescription": "Our enquiry channel is being prepared. Verified contact details will be published here once available.",
@@ -192,7 +259,7 @@
       },
       {
         "title": "When you contact us",
-        "paragraphs": ["If you send an enquiry, we use the information you provide to respond, understand your requirements, and manage the resulting business conversation. Please share only the information needed for that purpose.", "When the enquiry form is available, submissions go directly to the external service named beside the form. That provider may process or store your submission under its own terms. We do not operate a form-processing server or database on this website. Email enquiries are handled by the relevant email providers."]
+        "paragraphs": ["If you send an enquiry, we use the information you provide to respond, understand your requirements, and manage the resulting business conversation. Please share only the information needed for that purpose.", "When the enquiry form is available, submissions go directly to the external service named beside the form. That provider may process or store your submission under its own terms. We do not operate a form-processing server or database on this website. Email enquiries are handled by the relevant email providers.", "The WhatsApp link opens an external service only when you select it. WhatsApp processes your information under its own terms and privacy policy."]
       },
       {
         "title": "Retention and access",

@@ -5,6 +5,7 @@ import source from '../../site.config.json' with { type: 'json' };
 const text = z.string().trim().min(1).max(5000);
 const label = text.max(240);
 const id = z.string().regex(/^[a-z][a-z0-9-]{0,63}$/);
+const pageRoute = z.string().regex(/^\/[a-z][a-z0-9-]*\.html$/).refine((value) => value !== '/index.html', 'The index route is reserved');
 const icon = z.enum(['terminal', 'layers', 'compass', 'target', 'search', 'arrow', 'shield', 'check']);
 const link = z.strictObject({ label, href: z.string().regex(/^(?:\/(?:[a-z0-9-]+\.html)?|#[a-z][a-z0-9-]*)$/) });
 const field = z.strictObject({ label, placeholder: label });
@@ -43,7 +44,7 @@ const schema = z.strictObject({
   }),
   routes: z.strictObject({
     home: z.literal('/'),
-    privacy: z.string().regex(/^\/[a-z][a-z0-9-]*\.html$/).refine((value) => value !== '/index.html', 'The index route is reserved'),
+    privacy: pageRoute,
     notFound: z.literal('/404.html'),
   }),
   theme: z.strictObject({
@@ -52,7 +53,7 @@ const schema = z.strictObject({
     radius: z.strictObject({ card: radius, button: radius }),
     maxWidth: z.string().regex(/^(?:[5-9]\d|1[0-2]\d)rem$/),
   }),
-  ui: z.strictObject({ skipLink: label, mainNavigation: label, mobileNavigation: label, menuLabel: label, homeLabel: label, legalNavigation: label, emailLabel: label, phoneLabel: label, requiredLabel: label, backToTop: label }),
+  ui: z.strictObject({ skipLink: label, mainNavigation: label, mobileNavigation: label, menuLabel: label, homeLabel: label, legalNavigation: label, emailLabel: label, phoneLabel: label, whatsappLabel: label, whatsappCtaLabel: label, addressLabel: label, requiredLabel: label, backToTop: label }),
   navigation: z.array(link).min(1).max(8),
   header: z.strictObject({ descriptor: label, contactCta: link }),
   hero: z.strictObject({
@@ -72,7 +73,13 @@ const schema = z.strictObject({
   }),
   services: z.strictObject({
     ...section, intro: text, capabilityLabel: label, ctaLabel: label,
-    items: z.array(z.strictObject({ id, icon, title: label, description: text, tags: z.array(label).min(1).max(6) })).min(1).max(30),
+    page: z.strictObject({ backLabel: label, scopeTitle: label, outcomesTitle: label, contactCtaLabel: label, relatedTitle: label }),
+    items: z.array(z.strictObject({
+      id, href: pageRoute, icon, title: label, description: text,
+      tags: z.array(label).min(1).max(6),
+      scope: z.array(description).min(1).max(12),
+      outcomes: z.array(text).min(1).max(12),
+    })).min(1).max(30),
   }),
   approach: z.strictObject({ ...section, intro: text, steps: z.array(description).min(1).max(6) }),
   about: z.strictObject({
@@ -86,7 +93,9 @@ const schema = z.strictObject({
   contact: z.strictObject({
     ...section, intro: text,
     email: z.union([z.literal(''), z.email()]),
-    phone: z.union([z.literal(''), z.string().regex(/^\+[0-9 ()-]{6,25}$/)]),
+    phone: z.union([z.literal(''), z.string().regex(/^\+[0-9 ()-]{6,25}$/).refine((value) => /^\+[1-9][0-9]{6,14}$/.test(value.replace(/[ ()-]/g, '')), 'Use an international phone number with a country code')]),
+    whatsappUrl: z.union([z.literal(''), z.string().trim().regex(/^https:\/\/wa\.me\/[1-9][0-9]{6,14}$/, 'Use https://wa.me/ followed by an international number without +, spaces, or punctuation')]),
+    address: z.string().trim().max(500),
     safetyNote: text, unavailableTitle: label, unavailableDescription: text,
     form: z.strictObject({
       endpoint: z.union([z.literal(''), httpsUrl]),
@@ -107,11 +116,11 @@ const schema = z.strictObject({
 }).superRefine((config, context) => {
   const sections = [config.hero, config.services, config.approach, config.about, config.contact];
   const contentIds = [...sections, ...config.services.items].map((item) => item.id);
-  const renderedIds = [...contentIds, ...contentIds.map((value) => `${value}-heading`), 'main-content', 'enquiry-name', 'enquiry-email', 'enquiry-company', 'enquiry-message', 'enquiry-note', 'contact-form-heading'];
+  const renderedIds = [...contentIds, ...contentIds.map((value) => `${value}-heading`), 'main-content', 'enquiry-name', 'enquiry-email', 'enquiry-company', 'enquiry-message', 'enquiry-note', 'contact-form-heading', 'capability-scope-heading', 'capability-outcomes-heading', 'capability-related-heading'];
   if (new Set(renderedIds).size !== renderedIds.length) {
     context.addIssue({ code: 'custom', path: ['services'], message: 'Section, service and generated HTML identifiers must be unique' });
   }
-  const routes = Object.values(config.routes);
+  const routes = [...Object.values(config.routes), ...config.services.items.map((service) => service.href)];
   if (new Set(routes).size !== routes.length) {
     context.addIssue({ code: 'custom', path: ['routes'], message: 'Routes must be unique' });
   }
@@ -142,7 +151,7 @@ function isPlaceholder(value) {
 
 export function validateProductionConfig(config) {
   if (isPlaceholder(config.site.url)) throw new Error('Set a real canonical site.url before production deployment.');
-  if (!config.contact.email && !config.contact.form.endpoint) throw new Error('Configure a verified contact email or HTTPS form endpoint before production deployment.');
+  if (!config.contact.email && !config.contact.phone && !config.contact.whatsappUrl && !config.contact.form.endpoint) throw new Error('Configure a verified contact email, phone, WhatsApp link, or HTTPS form endpoint before production deployment.');
   if ([config.contact.email, config.contact.form.endpoint].some(isPlaceholder)) throw new Error('Replace placeholder contact details before production deployment.');
   return config;
 }

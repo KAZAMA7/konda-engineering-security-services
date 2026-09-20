@@ -43,7 +43,7 @@ const { form } = contact;
   <div class="flex h-full flex-col justify-center rounded-card border border-border bg-surface p-8 sm:p-10">
     <Icon name="compass" class="size-10 text-accent" />
     <h3 class="mt-6 text-2xl font-medium tracking-tight">{contact.unavailableTitle}</h3>
-    {contact.email ? <a class="mt-4 break-all text-lg text-accent underline underline-offset-4" href={`mailto:${contact.email}`}>{contact.email}</a> : <p class="mt-4 leading-relaxed text-muted">{contact.unavailableDescription}</p>}
+    {contact.email ? <a class="mt-4 break-all text-lg text-accent underline underline-offset-4" href={`mailto:${contact.email}`}>{contact.email}</a> : contact.phone ? <a class="mt-4 text-lg text-accent underline underline-offset-4" href={`tel:${contact.phone.replace(/[ ()-]/g, '')}`}>{contact.phone}</a> : contact.whatsappUrl ? <a class="mt-4 text-lg text-accent underline underline-offset-4" href={contact.whatsappUrl} rel="noreferrer">{site.ui.whatsappCtaLabel}</a> : <p class="mt-4 leading-relaxed text-muted">{contact.unavailableDescription}</p>}
     <p class="mt-8 border-t border-border pt-5 text-xs leading-relaxed text-muted">{contact.safetyNote}</p>
   </div>
 )}

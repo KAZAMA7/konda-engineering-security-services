@@ -12,11 +12,12 @@
     "check": "npm run generate && astro check",
     "build": "npm run generate && astro build && node scripts/verify-build.mjs",
     "preview": "node scripts/preview.mjs",
-    "test": "node --test tests/config.test.mjs tests/security.test.mjs",
+    "test": "node --test tests/config.test.mjs tests/security.test.mjs tests/deploy-container.test.mjs",
     "test:e2e": "playwright test",
     "container:build": "docker build --tag konda-services:local .",
     "test:container": "node --test tests/container.test.mjs",
-    "validate:production": "node scripts/validate-production.mjs"
+    "validate:production": "node scripts/validate-production.mjs",
+    "verify:deployment": "node scripts/verify-deployment.mjs"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",

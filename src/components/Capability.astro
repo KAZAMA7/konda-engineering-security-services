@@ -1,0 +1,59 @@
+---
+import { homeHref, site } from '../lib/config.mjs';
+import Contact from './Contact.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  service: (typeof site.services.items)[number];
+}
+
+const { service } = Astro.props;
+const { services } = site;
+const related = services.items.filter((item) => item.id !== service.id);
+---
+<section class="section-space border-b border-border" aria-labelledby={`${service.id}-heading`}>
+  <div class="shell">
+    <a class="inline-flex min-h-11 items-center gap-3 text-sm text-accent" href={homeHref(`#${services.id}`)}><Icon name="arrow" class="size-4 rotate-180" />{services.page.backLabel}</a>
+    <div class="mt-10 max-w-4xl">
+      <p class="eyebrow flex items-center gap-3"><Icon name={service.icon} class="size-5" />{services.capabilityLabel}</p>
+      <h1 id={`${service.id}-heading`} class="section-heading mt-5">{service.title}</h1>
+      <p class="mt-7 max-w-3xl text-lg leading-relaxed text-muted">{service.description}</p>
+      <ul class="mt-7 flex flex-wrap gap-2">
+        {service.tags.map((tag) => <li class="rounded-full border border-border px-3 py-1.5 text-xs text-muted">{tag}</li>)}
+      </ul>
+      <a class="button button-primary mt-8" href={`#${site.contact.id}`}>{services.page.contactCtaLabel}<Icon name="arrow" class="size-5" /></a>
+    </div>
+  </div>
+</section>
+<div class="shell grid gap-10 py-20 lg:grid-cols-3 lg:gap-12 lg:py-24">
+  <section data-capability-scope class="lg:col-span-2" aria-labelledby="capability-scope-heading">
+    <h2 id="capability-scope-heading" class="text-2xl font-semibold tracking-tight">{services.page.scopeTitle}</h2>
+    <div class="mt-8 space-y-5">
+      {service.scope.map((item) => (
+        <div class="rounded-card border border-border bg-surface p-6 sm:p-8">
+          <h3 class="text-lg font-semibold">{item.title}</h3>
+          <p class="mt-3 leading-relaxed text-muted">{item.description}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+  <section data-capability-outcomes class="self-start rounded-card border border-accent/30 bg-elevated p-6 sm:p-8" aria-labelledby="capability-outcomes-heading">
+    <h2 id="capability-outcomes-heading" class="text-2xl font-semibold tracking-tight">{services.page.outcomesTitle}</h2>
+    <ul class="mt-7 space-y-6">
+      {service.outcomes.map((outcome) => <li class="flex items-start gap-3 text-sm leading-7 text-muted"><Icon name="check" class="mt-1 size-5 shrink-0 text-accent" /><span>{outcome}</span></li>)}
+    </ul>
+  </section>
+</div>
+{related.length > 0 && (
+  <nav class="section-space border-t border-border" aria-labelledby="capability-related-heading">
+    <div class="shell">
+      <h2 id="capability-related-heading" class="text-2xl font-semibold tracking-tight">{services.page.relatedTitle}</h2>
+      <ul class="mt-8 grid gap-4 md:grid-cols-2">
+        {related.map((item) => (
+          <li><a class="service-card group flex h-full min-h-16 items-center justify-between gap-4 rounded-card border border-border bg-surface p-6 font-medium" href={item.href}>{item.title}<Icon name="arrow" class="size-5 shrink-0 text-accent transition-transform group-hover:translate-x-1" /></a></li>
+        ))}
+      </ul>
+    </div>
+  </nav>
+)}
+<Contact />

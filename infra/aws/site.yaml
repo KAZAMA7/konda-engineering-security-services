@@ -34,7 +34,9 @@ Rules:
         AssertDescription: Supply both CustomDomainName and AcmCertificateArn, or neither.
 
 Conditions:
-  HasCustomDomain: !Not [!Equals [!Ref CustomDomainName, '']]
+  HasCustomDomain: !And
+    - !Not [!Equals [!Ref CustomDomainName, '']]
+    - !Not [!Equals [!Ref AcmCertificateArn, '']]
 
 Resources:
   SiteBucket:

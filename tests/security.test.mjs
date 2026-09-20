@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { site } from '../src/lib/config.mjs';
 import { createCsp, createCloudFrontPolicy, createSecurityHeaders, renderNginxHeaders, renderTheme } from '../src/lib/security.mjs';
@@ -32,6 +33,12 @@ test('all hosts share the same CSP and security header values', () => {
   assert.equal(headers['X-Frame-Options'], 'DENY');
   assert.ok(headers['Permissions-Policy'].includes('camera=()'));
   assert.equal(Object.hasOwn(policy, 'Name'), false);
+});
+
+test('Tailwind scans only the site templates, so builds are reproducible across machines and containers', async () => {
+  const stylesheet = await readFile(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  assert.match(stylesheet, /^@import "tailwindcss" source\(none\);$/m, 'automatic source detection would leak README, script and generated-file tokens into the CSS hash');
+  assert.deepEqual(stylesheet.match(/^@source .*$/gm), ['@source "../**/*.astro";']);
 });
 
 test('theme CSS derives all editable tokens from configuration, with no external imports', () => {

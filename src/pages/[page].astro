@@ -1,37 +1,43 @@
 ---
 import type { GetStaticPaths } from 'astro';
 import MainLayout from '../layouts/MainLayout.astro';
+import Capability from '../components/Capability.astro';
 import Icon from '../components/Icon.astro';
 import { site } from '../lib/config.mjs';
 
 export const getStaticPaths = (() => [
   { params: { page: site.routes.privacy.slice(1, -5) }, props: { kind: 'privacy' as const } },
   { params: { page: site.routes.notFound.slice(1, -5) }, props: { kind: 'notFound' as const } },
+  ...site.services.items.map((service) => ({ params: { page: service.href.slice(1, -5) }, props: { kind: 'capability' as const, service } })),
 ]) satisfies GetStaticPaths;
 
-interface Props {
-  kind: 'privacy' | 'notFound';
-}
+type Props =
+  | { kind: 'privacy' | 'notFound' }
+  | { kind: 'capability'; service: (typeof site.services.items)[number] };
 
-const { kind } = Astro.props;
-const content = site[kind];
+const props = Astro.props;
+const title = props.kind === 'capability' ? props.service.title : site[props.kind].eyebrow;
+const description = props.kind === 'capability' ? props.service.description : props.kind === 'privacy' ? site.privacy.intro : site.notFound.description;
+const path = props.kind === 'capability' ? props.service.href : site.routes[props.kind];
 ---
-<MainLayout title={`${content.eyebrow} | ${site.site.name}`} description={kind === 'privacy' ? site.privacy.intro : site.notFound.description} path={site.routes[kind]} noindex={kind === 'notFound'}>
-  <section class="section-space">
-    <div class="shell">
-      <div class="max-w-3xl">
-        <p class="eyebrow">{content.eyebrow}</p>
-        <h1 class="section-heading mt-5">{content.title}</h1>
-        {kind === 'privacy' ? (
-          <>
-            <p class="mt-7 text-lg leading-relaxed text-muted">{site.privacy.intro}</p>
-            <div class="mt-12 space-y-9">
-              {site.privacy.sections.map((section) => <section class="border-t border-border pt-7"><h2 class="text-xl font-semibold">{section.title}</h2><div class="mt-4 space-y-4 leading-relaxed text-muted">{section.paragraphs.map((paragraph) => <p>{paragraph}</p>)}</div></section>)}
-            </div>
-          </>
-        ) : <p class="mt-7 text-lg leading-relaxed text-muted">{site.notFound.description}</p>}
-        <a class="button button-primary mt-10" href={site.routes.home}>{content.backLabel}<Icon name="arrow" class="size-5" /></a>
+<MainLayout title={`${title} | ${site.site.name}`} description={description} path={path} noindex={props.kind === 'notFound'}>
+  {props.kind === 'capability' ? <Capability service={props.service} /> : (
+    <section class="section-space">
+      <div class="shell">
+        <div class="max-w-3xl">
+          <p class="eyebrow">{site[props.kind].eyebrow}</p>
+          <h1 class="section-heading mt-5">{site[props.kind].title}</h1>
+          {props.kind === 'privacy' ? (
+            <>
+              <p class="mt-7 text-lg leading-relaxed text-muted">{site.privacy.intro}</p>
+              <div class="mt-12 space-y-9">
+                {site.privacy.sections.map((section) => <section class="border-t border-border pt-7"><h2 class="text-xl font-semibold">{section.title}</h2><div class="mt-4 space-y-4 leading-relaxed text-muted">{section.paragraphs.map((paragraph) => <p>{paragraph}</p>)}</div></section>)}
+              </div>
+            </>
+          ) : <p class="mt-7 text-lg leading-relaxed text-muted">{site.notFound.description}</p>}
+          <a class="button button-primary mt-10" href={site.routes.home}>{site[props.kind].backLabel}<Icon name="arrow" class="size-5" /></a>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  )}
 </MainLayout>

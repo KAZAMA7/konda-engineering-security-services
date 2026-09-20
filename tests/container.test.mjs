@@ -59,6 +59,22 @@ test('the non-root image serves only static content on a read-only filesystem', 
   assert.ok(document.querySelector('footer').textContent.includes(site.footer.copyright));
   assert.deepEqual([...document.querySelectorAll('[data-service] h3')].map((heading) => heading.textContent), site.services.items.map(({ title }) => title));
   assert.equal(document.querySelectorAll('script, style, [style]').length, 0);
+  assert.equal(document.documentElement.lang, 'en-NL');
+  assert.ok(document.getElementById(site.about.id).textContent.includes('Netherlands'));
+  assert.doesNotMatch(document.body.textContent, /\bIndia\b/);
+  assert.equal(document.querySelector('a[href^="tel:"]').getAttribute('href'), 'tel:+31626798365');
+
+  for (const service of site.services.items) {
+    const response = await request(url, service.href);
+    assert.match(response.headers.get('content-type'), /^text\/html/);
+    const page = parseHTML(await response.text()).document;
+    assert.equal(page.querySelector('h1').textContent, service.title);
+    assert.equal(page.title, `${service.title} | ${site.site.name}`);
+    assert.equal(page.querySelector('link[rel="canonical"]').getAttribute('href'), new URL(service.href, site.site.url).href);
+    assert.equal(page.querySelector('a[href^="tel:"]').getAttribute('href'), 'tel:+31626798365');
+    assert.equal(page.querySelectorAll('script, style, [style]').length, 0);
+    assert.deepEqual([...page.querySelectorAll('[data-capability-scope] h3')].map((heading) => heading.textContent), service.scope.map((item) => item.title));
+  }
 
   const cssPath = [...document.querySelectorAll('link[rel="stylesheet"]')].map((link) => link.getAttribute('href')).find((href) => href.startsWith('/_astro/'));
   assert.ok(cssPath, 'A hashed stylesheet must be present');
@@ -73,7 +89,7 @@ test('the non-root image serves only static content on a read-only filesystem', 
 
   const privacy = await request(url, site.routes.privacy);
   assert.equal(parseHTML(await privacy.text()).document.querySelector('h1').textContent, site.privacy.title);
-  for (const path of ['/missing-page', '/404.html', '/_astro/missing.css', '/_headers', '/.git/config', '/site.config.json', '/package.json', '/src/lib/config.mjs']) {
+  for (const path of ['/missing-page', '/missing-capability.html', '/404.html', '/_astro/missing.css', '/_headers', '/.git/config', '/site.config.json', '/package.json', '/src/lib/config.mjs']) {
     const response = await request(url, path, { status: 404 });
     assert.equal(parseHTML(await response.text()).document.querySelector('h1').textContent, site.notFound.title);
   }
