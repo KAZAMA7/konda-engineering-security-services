@@ -27,7 +27,7 @@
     "astro": "7.3.3",
     "linkedom": "0.18.13",
     "tailwindcss": "4.3.3",
-    "typescript": "^6.0.0",
+    "typescript": "^7.0.2",
     "zod": "4.6.5"
   }
 }
