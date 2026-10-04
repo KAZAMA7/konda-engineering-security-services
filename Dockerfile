@@ -18,7 +18,7 @@ RUN case "$VALIDATE_PRODUCTION" in \
     && npm run build \
     && rm dist/_headers
 
-FROM nginx:stable-alpine@sha256:ef8676b33d681f272ba429b27658bdd7e640963279714c96bddf1dc76307f7b6 AS runtime
+FROM nginx:stable-alpine@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94 AS runtime
 
 COPY --from=build /app/dist/ /srv/site/
 COPY --from=build /app/.deploy/nginx-security-headers.conf /etc/nginx/security-headers.conf
