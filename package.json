@@ -29,6 +29,6 @@
     "linkedom": "0.18.13",
     "tailwindcss": "4.3.3",
     "typescript": "^6.0.0",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   }
 }
