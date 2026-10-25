@@ -25,7 +25,7 @@
     "@playwright/test": "1.63.0",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "^24.13.6",
-    "astro": "7.3.3",
+    "astro": "7.4.2",
     "linkedom": "0.18.13",
     "tailwindcss": "4.3.3",
     "typescript": "^6.0.0",
